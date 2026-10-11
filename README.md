@@ -246,6 +246,42 @@ rungraph mcp --check           verify the agent side end to end
 
 Requires Node ≥ 20.
 
+## Playground: demo runs to try
+
+`examples/playground` is a tiny pretend lemonade stand with a team of small
+agents (a writer, an AI judge, three critics and an editor). Each demo
+command makes them work in a different pattern, so you can watch it as a
+graph.
+
+**Start Claude inside the playground folder.** The demo commands only load
+from there; at the repo root you'll only see `/playground-guide`.
+
+```
+# terminal 1, from the repo root: the dashboard, playground runs only
+npm install && npm run build
+node bin/rungraph.js --project examples/playground
+
+# terminal 2: the agents
+cd examples/playground
+claude
+```
+
+| Command | Pattern it shows |
+|---|---|
+| `/pipeline` | sequential: researcher → writer → judge |
+| `/panel` | fan-out to three critics in parallel, fan-in to the editor |
+| `/until-good` | writer ↔ judge loop until PASS (AI-as-judge) |
+| `/flaky` | retry storm signal |
+| `/ask-me` | human-in-the-loop question |
+| `/risky` | permission denial (click **No**) |
+| `/broken` | unresolved error signal |
+| `/scenario <idea>` | any flow you describe in plain English |
+
+`/risky` needs permission prompts, so start plain `claude`, not
+`claude --dangerously-skip-permissions`. The agents run on Haiku, so a demo
+costs a few cents. `/playground-guide` walks through all of it;
+[SCENARIOS.md](examples/playground/SCENARIOS.md) has prompts to paste.
+
 ## Roadmap
 
 - **Annotations** — mark nodes before exporting a bundle.
