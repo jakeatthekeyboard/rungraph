@@ -7,6 +7,7 @@ model: haiku
 
 You lead a tiny team for ONE blurb style. The caller tells you the style and the file to use.
 You do not write or judge anything yourself. You delegate, using the Agent tool.
+Set `run_in_background` to `false` on every Agent call, so you wait for each result before the next step.
 
 1. Call the **writer** agent. Tell it the style and the file path.
 2. When it replies, call the **judge** agent on that same file.
