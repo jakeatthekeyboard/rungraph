@@ -888,6 +888,9 @@ button.ghost[data-on="true"] {
   font-size: 11px;
 }
 .tool-call .head .err { color: var(--clay); }
+.inspector .node-json { margin-top: 10px; }
+.inspector .node-json-bar { display: flex; gap: 6px; }
+.inspector pre.json { margin-top: 6px; max-height: 60vh; }
 .inspector pre.error-text { color: var(--clay); border-color: var(--clay-dim); }
 .tool-call .head .ok { color: var(--sage); }
 .inspector .loading { color: var(--ink-faint); font-family: var(--mono); padding: 14px 0; }

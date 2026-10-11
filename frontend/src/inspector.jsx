@@ -568,6 +568,8 @@ function NodeDetail({
         )}
       </dl>
 
+      <NodeJson graph={graph} node={node} detail={fresh} />
+
       {/* Why the canvas marked this node — and, for `info` signals, why it did
           not. Both are answered here rather than left to guesswork. */}
       {sigs.length > 0 && (
@@ -613,10 +615,43 @@ function NodeDetail({
   );
 }
 
-/** `futureFrom`: the first call row (0-based) that has not happened yet at the playhead; Infinity when all have. */
+/**
+ * The node as rungraph holds it: the graph node, the edges that touch it,
+ * and the fetched detail (prompt, result, transcript, calls). Collapsed by
+ * default; the open/closed choice carries across node changes.
+ */
+function NodeJson({ graph, node, detail }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const text = useMemo(() => {
+    if (!open) return '';
+    const edges = graph.edges.filter((e) => e.from === node.id || e.to === node.id);
+    return JSON.stringify({ node, edges, detail: detail ?? null }, null, 2);
+  }, [open, graph, node, detail]);
+  const copy = () =>
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    });
+  return (
+    <div class="node-json">
+      <div class="node-json-bar">
+        <button class="ghost" onClick={() => setOpen((o) => !o)} aria-expanded={String(open)}>
+          {open ? 'hide JSON' : 'view JSON'}
+        </button>
+        {open && (
+          <button class="ghost" onClick={copy}>{copied ? 'copied' : 'copy'}</button>
+        )}
+      </div>
+      {open && <pre class="json">{text}</pre>}
+    </div>
+  );
+}
+
 // A transcript line where the agent called a tool (results are role 'user').
 const isToolCall = (t) => t.role === 'assistant' && !!t.toolName;
 
+/** `futureFrom`: the first call row (0-based) that has not happened yet at the playhead; Infinity when all have. */
 function DetailBody({ detail, futureFrom = Infinity }) {
   switch (detail.kind) {
     case 'turn':
