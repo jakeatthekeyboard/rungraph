@@ -6,7 +6,7 @@ import { Strip, SIGNAL_GLYPHS } from './strip.jsx';
 import { ReplayBar } from './replay-bar.jsx';
 import { ExportDialog } from './export.jsx';
 import { ResumePopover } from './resume.jsx';
-import { setTheme, storedTheme } from './theme.js';
+import { FONT_SIZES, setFontSize, setTheme, storedFontSize, storedTheme } from './theme.js';
 import {
   safeTimeline,
   cursorOf,
@@ -68,6 +68,7 @@ const embedNarrow = () =>
 export function App() {
   const [index, setIndex] = useState(null);
   const [theme, setThemeState] = useState(storedTheme);
+  const [fontSize, setFontSizeState] = useState(storedFontSize);
   // A deep link (#run=…&sel=…&f=…) wins over the plain ?run= param: the hash
   // carries focus state the search param cannot.
   const [runId, setRunId] = useState(
@@ -1049,6 +1050,20 @@ export function App() {
             {follow ? 'following' : 'follow'}
           </button>
         )}
+        <select
+          class="font-size-select"
+          value={fontSize}
+          onChange={(e) => {
+            setFontSize(e.currentTarget.value);
+            setFontSizeState(e.currentTarget.value);
+          }}
+          title="text size"
+          aria-label="text size"
+        >
+          {FONT_SIZES.map((f) => (
+            <option key={f.id} value={f.id}>{f.label}</option>
+          ))}
+        </select>
         <button
           class="ghost theme-toggle"
           onClick={() => {
