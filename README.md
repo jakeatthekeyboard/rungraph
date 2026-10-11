@@ -266,6 +266,10 @@ cd examples/playground
 claude
 ```
 
+On Windows, double-click `Start-Rungraph.cmd` in the repo root instead of
+terminal 1. It installs dependencies on first run, builds, and starts the
+dashboard with every project's runs; close its window to stop it.
+
 The dashboard opens at http://127.0.0.1:4321. If it is already running,
 just open that address. `--project examples/playground` shows only playground
 runs; without it, you see runs from every project on your machine.
