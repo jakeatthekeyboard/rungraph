@@ -704,6 +704,14 @@ button.ghost[data-on="true"] {
   fill: var(--ink-faint);
 }
 .edge text.reason { fill: var(--amber); }
+.edge .edge-order rect {
+  fill: var(--bg);
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+.edge .edge-order text { fill: var(--ink-dim); font-size: 8.5px; }
+.edge[data-kind="spawn"] .edge-order rect,
+.edge[data-kind="return"] .edge-order rect { stroke: var(--sage-dim); }
 .edge marker path { fill: var(--sage-dim); stroke: none; }
 
 .group-box rect {

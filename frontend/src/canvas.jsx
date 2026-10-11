@@ -10,7 +10,7 @@ import { memo } from 'preact/compat';
 import { layoutGraph, edgePath } from './layout.js';
 import { badgedNodeIds, nodeMarks } from './focus.js';
 import { replayLabel } from './replay.js';
-import { runOrder } from '../../src/timeline.js';
+import { runOrder, edgeOrder } from '../../src/timeline.js';
 import {
   zoomAtPoint,
   normalizeWheel,
@@ -339,6 +339,8 @@ export function Canvas({
   // on what "earlier" means or the list reads out of sequence — so it is an
   // import from timeline.js, never a copy.
   const orderedNodes = useMemo(() => (graph ? runOrder(graph.nodes) : []), [graph]);
+  // The number on each edge: the order it happened in (see edgeOrder).
+  const edgeNumbers = useMemo(() => (graph ? edgeOrder(graph.nodes, graph.edges) : new Map()), [graph]);
 
   // Keyboard walk-through: j/k or ↓/↑ step chronologically (IR array order),
   // f fits, / opens find, Esc deselects and clears focus. No-ops without a
@@ -591,6 +593,7 @@ export function Canvas({
                   key={e.id}
                   edge={e}
                   pts={pts}
+                  order={edgeNumbers.get(e.id)}
                   present={present}
                   selected={selection?.type === 'edge' && selection.id === e.id}
                   // an edge stays bright only if it connects two focused nodes —
@@ -948,9 +951,10 @@ export function fmtDuration(ms) {
   return `${ms}ms`;
 }
 
-const EdgeView = memo(function EdgeView({ edge, pts, selected, dim, present = true }) {
+const EdgeView = memo(function EdgeView({ edge, pts, selected, dim, order, present = true }) {
   const d = edgePath(pts);
   const mid = pts[Math.floor(pts.length / 2)];
+  const half = order ? halfway(pts) : null;
   // A future edge is a ghost like a future node: the line (its shape) stays,
   // its reason flag, label and tooltip (its content) wait for it to happen.
   const future = present === false;
@@ -965,16 +969,47 @@ const EdgeView = memo(function EdgeView({ edge, pts, selected, dim, present = tr
       <path d={d} marker-end={edge.kind !== 'sequence' ? 'url(#arrow)' : undefined} />
       {/* invisible fat hit area */}
       <path d={d} stroke="transparent" stroke-width="12" fill="none" style="cursor:pointer" />
+      {!future && order && half && (
+        // The order this edge happened in, as a small pill centred on the line.
+        <g class="edge-order">
+          <rect
+            x={half.x - (6 + 3 * String(order).length)}
+            y={half.y - 6.5}
+            width={12 + 6 * String(order).length}
+            height="13"
+            rx="6.5"
+          />
+          <text x={half.x} y={half.y + 3} text-anchor="middle">{order}</text>
+        </g>
+      )}
       {!future && edge.reason && mid && (
         <text class="reason" x={mid.x + 6} y={mid.y - 4}>⚑ {truncate(edge.reason, 34)}</text>
       )}
       {!future && selected && edge.label && mid && (
         <text x={mid.x + 6} y={mid.y + 10}>{truncate(edge.label, 40)}</text>
       )}
-      {!future && <title>{[edge.kind, edge.label, edge.reason].filter(Boolean).join(' — ')}</title>}
+      {!future && (
+        <title>{[order && `#${order}`, edge.kind, edge.label, edge.reason].filter(Boolean).join(' — ')}</title>
+      )}
     </g>
   );
 });
+
+/** The point halfway along a polyline, by length. Null for fewer than two points. */
+function halfway(pts) {
+  if (!Array.isArray(pts) || pts.length < 2) return null;
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  let left = total / 2;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const seg = Math.hypot(b.x - a.x, b.y - a.y);
+    if (seg >= left && seg > 0) return { x: a.x + ((b.x - a.x) * left) / seg, y: a.y + ((b.y - a.y) * left) / seg };
+    left -= seg;
+  }
+  return pts[pts.length - 1];
+}
 
 function truncate(s, n) {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;

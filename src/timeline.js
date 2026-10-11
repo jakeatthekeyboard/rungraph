@@ -571,3 +571,38 @@ export function tickAfter(sched, cursor, rate = 1) {
   for (let i = Math.max(0, c - 1); i <= next - 2; i++) sum += num(raw[i], 0, 0);
   return { cursor: next, delayMs: Math.max(floor, sum) / r, done: next === n };
 }
+
+/**
+ * The order each edge happened in, for the numbered badges on the canvas:
+ * Map<edgeId, n>, n from 1. An edge is ranked by its TARGET's place in
+ * `runOrder` (when the step it leads to began), ties broken by its source's
+ * place, then by array order. So the three spawn edges of a fan-out read
+ * 1, 2, 3 in the order the agents started, and every edge gets a distinct
+ * number. Edges without an id, or whose ends are not nodes in the run, get
+ * no number. Never throws.
+ *
+ * @param {Array} nodes
+ * @param {Array} edges
+ * @returns {Map<string, number>}
+ */
+export function edgeOrder(nodes, edges) {
+  const out = new Map();
+  if (!Array.isArray(edges)) return out;
+  const rank = new Map();
+  runOrder(nodes).forEach((n, i) => {
+    if (n && n.id != null && !rank.has(n.id)) rank.set(n.id, i);
+  });
+  const ranked = [];
+  edges.forEach((e, i) => {
+    if (!e || e.id == null) return;
+    const to = rank.get(e.to);
+    const from = rank.get(e.from);
+    if (to === undefined || from === undefined) return;
+    ranked.push({ id: e.id, to, from, i });
+  });
+  ranked.sort((a, b) => a.to - b.to || a.from - b.from || a.i - b.i);
+  ranked.forEach((r, k) => {
+    if (!out.has(r.id)) out.set(r.id, out.size + 1);
+  });
+  return out;
+}

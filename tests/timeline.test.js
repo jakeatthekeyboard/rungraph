@@ -15,6 +15,7 @@ import {
   schedule,
   tickAfter,
   validCallOffsets,
+  edgeOrder,
 } from '../src/timeline.js';
 import {
   pinFixtureMtimes,
@@ -814,5 +815,54 @@ describe('purity', () => {
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(code).not.toMatch(/^\s*import\s/m);
     expect(code).not.toMatch(/require\(|['"]node:|process\./);
+  });
+});
+
+describe('edgeOrder numbers edges in the order they happened', () => {
+  const at = (s) => `2026-10-11T14:${s}Z`;
+  // An orchestrator fans out to three agents (started b, a, c), which then
+  // return to one turn. Array order is deliberately not time order.
+  const nodes = [
+    { id: 'turn', startedAt: at('16:50') },
+    { id: 'a', startedAt: at('16:56') },
+    { id: 'b', startedAt: at('16:55') },
+    { id: 'c', startedAt: at('16:57') },
+    { id: 'end', startedAt: at('17:30') },
+  ];
+  const edges = [
+    { id: 'e-a', from: 'turn', to: 'a' },
+    { id: 'e-c', from: 'turn', to: 'c' },
+    { id: 'e-b', from: 'turn', to: 'b' },
+    { id: 'r-c', from: 'c', to: 'end' },
+    { id: 'r-a', from: 'a', to: 'end' },
+    { id: 'r-b', from: 'b', to: 'end' },
+  ];
+
+  it('ranks by when the target started, then by the source', () => {
+    const order = edgeOrder(nodes, edges);
+    expect(order.get('e-b')).toBe(1);
+    expect(order.get('e-a')).toBe(2);
+    expect(order.get('e-c')).toBe(3);
+    // the returns share a target, so their sources' start order decides
+    expect(order.get('r-b')).toBe(4);
+    expect(order.get('r-a')).toBe(5);
+    expect(order.get('r-c')).toBe(6);
+  });
+
+  it('gives every numbered edge a distinct number from 1', () => {
+    const nums = [...edgeOrder(nodes, edges).values()].sort((x, y) => x - y);
+    expect(nums).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('skips edges it cannot place, and never throws', () => {
+    const order = edgeOrder(nodes, [
+      { from: 'turn', to: 'a' },
+      { id: 'dangling', from: 'turn', to: 'ghost' },
+      null,
+      { id: 'ok', from: 'turn', to: 'b' },
+    ]);
+    expect([...order]).toEqual([['ok', 1]]);
+    expect(edgeOrder(null, null).size).toBe(0);
+    expect(edgeOrder(nodes, 'nope').size).toBe(0);
   });
 });
