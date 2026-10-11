@@ -44,6 +44,7 @@ Then type a command such as `/pipeline`. Watch the graph grow in the browser whi
 | `/ask-me` | Human in the loop | A question node showing your answer |
 | `/risky` | Permission denial | A "denied" node, after you click No |
 | `/broken` | Unresolved error | An error that nothing fixed, flagged in the signal strip |
+| `/nested` | Nested fan-out | Two team leads side by side, each with its own writer and judge under it |
 | `/scenario <your idea>` | Anything you describe | Whatever shape you asked for |
 
 Try `/scenario` with things like:
@@ -56,7 +57,7 @@ More ideas are in `SCENARIOS.md`.
 
 | Folder | Holds |
 |---|---|
-| `.claude/agents/` | The seven agents: writer, judge, researcher, three critics, editor |
+| `.claude/agents/` | The eight agents: writer, judge, researcher, three critics, editor, team-lead |
 | `.claude/commands/` | The demo commands above |
 | `.claude/skills/` | `scenario` and this guide |
 | `data/` | The stand's facts and three customer reviews |

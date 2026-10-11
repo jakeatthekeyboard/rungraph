@@ -279,6 +279,7 @@ runs; without it, you see runs from every project on your machine.
 | `/ask-me` | human-in-the-loop question |
 | `/risky` | permission denial (click **No**) |
 | `/broken` | unresolved error signal |
+| `/nested` | nested fan-out: two team leads in parallel, each calling its own writer and judge |
 | `/scenario <idea>` | any flow you describe in plain English |
 
 `/risky` needs permission prompts, so start plain `claude`, not
@@ -306,7 +307,8 @@ Build a description from these pieces:
 The building blocks:
 
 - **Agents:** `writer`, `judge`, `researcher`, `tone-critic`,
-  `facts-critic`, `length-critic`, `editor`.
+  `facts-critic`, `length-critic`, `editor`, and `team-lead` (calls its
+  own writer and judge, for nested flows).
 - **Tools:** `word-count.sh`, `check-fridge.sh` (fails until fixed),
   `print-sign.sh` (always fails).
 

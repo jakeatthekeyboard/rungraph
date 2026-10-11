@@ -17,6 +17,7 @@ Build it from these pieces only.
 | researcher | Reads customer reviews |
 | tone-critic, facts-critic, length-critic | Each reviews one aspect of a blurb |
 | editor | Applies notes and saves `out/blurb-final.md` |
+| team-lead | Calls its own writer, then judge (an agent that calls agents) |
 
 If `.claude/agents/` holds other agents, read their descriptions and use them too.
 
@@ -28,6 +29,7 @@ If `.claude/agents/` holds other agents, read their descriptions and use them to
 - **Fan-in:** pass every parallel result to one agent, such as editor or judge.
 - **Loop:** repeat until a condition holds. Never more than 3 rounds.
 - **Ask the human:** use the AskUserQuestion tool.
+- **Nested:** give work to a team-lead, which calls its own writer and judge.
 
 **Rules:**
 1. Before starting, tell the user the plan in one line, such as "writer ×3 in parallel, then judge".
