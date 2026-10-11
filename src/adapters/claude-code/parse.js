@@ -816,7 +816,10 @@ async function materializeAgent(spawn, ctx) {
     resultText = contentText(spawn.result.content ?? []) || null;
   } else if (notif && notif.status !== 'running') {
     terminal = notif.status === 'completed' ? 'completed' : 'error';
-    returnTurnId = b.turnAt(notif.lineIdx);
+    // Only a top-level agent's result lands in the root session. A nested
+    // agent's result is delivered to its parent agent (resultTurnId is that
+    // parent); the root session's notice for it is a side broadcast.
+    if (depth === 0) returnTurnId = b.turnAt(notif.lineIdx);
     resultText = notif.result ?? null;
     if (notif.status === 'killed' || notif.status === 'failed') {
       detail.result = notif.summary ?? null;

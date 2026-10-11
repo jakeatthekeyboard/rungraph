@@ -532,6 +532,18 @@ describe('agents that call agents', () => {
       { type: 'attachment', agentId: CHILD, uuid: 'c-3', parentUuid: 'c-2', timestamp: at(19), attachment: { type: 'prompt_snapshot', systemPrompt: ['…'] } },
     ];
     await writeFile(join(sub, `agent-${CHILD}.jsonl`), child.map((l) => JSON.stringify(l)).join('\n') + '\n');
+    // The root session also gets a completion notice for the nested agent;
+    // its result was delivered to the parent agent, so the return edge must
+    // still go back to the parent, not to the root session's turn.
+    const main = join(dir, '-home-dev-acme', '11111111-1111-4111-8111-111111111111.jsonl');
+    const notice = {
+      type: 'queue-operation',
+      operation: 'enqueue',
+      timestamp: at(20),
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      content: `<task-notification>\n<task-id>${CHILD}</task-id>\n<tool-use-id>toolu_fxN001</tool-use-id>\n<status>completed</status>\n<summary>Agent "Check redirect race" finished</summary>\n<result>Confirmed.</result>\n</task-notification>`,
+    };
+    await writeFile(main, (await readFile(main, 'utf8')).trimEnd() + '\n' + JSON.stringify(notice) + '\n');
     await writeFile(
       join(sub, `agent-${CHILD}.meta.json`),
       JSON.stringify({ agentType: 'general-purpose', toolUseId: 'toolu_fxN001', parentAgentId: PARENT, spawnDepth: 2 }),
@@ -562,6 +574,8 @@ describe('agents that call agents', () => {
     const between = (kind, from, to) => ir.edges.some((e) => e.kind === kind && e.from === from && e.to === to);
     expect(between('spawn', 'a:toolu_fxA001', 'a:toolu_fxN001')).toBe(true);
     expect(between('return', 'a:toolu_fxN001', 'a:toolu_fxA001')).toBe(true);
+    // Exactly one return edge, and it is that one.
+    expect(ir.edges.filter((e) => e.kind === 'return' && e.from === 'a:toolu_fxN001')).toHaveLength(1);
   });
 
   it('skips a nested call that errored, and still reads every line', () => {
