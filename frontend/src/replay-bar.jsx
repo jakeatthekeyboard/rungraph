@@ -26,17 +26,18 @@ import { fmtClock, labelsFor, nextRate, nubsFor, rateLabel, readoutFor } from '.
  */
 
 /**
- * Label per control. Words, not a row of triangles: the first cut drew
- * `⏮ ◀ ▶ ▶` and the two ▶ — step forward and play — were told apart by
- * nothing but their order, which is no way to learn a transport. Named once
- * so the title and the label cannot drift apart.
+ * Label per control. The steps keep words: the first cut drew `⏮ ◀ ▶ ▶`
+ * and the two ▶ — step forward and play — were told apart by nothing but
+ * their order. Play/pause and the two jumps are icons only (the ⏮ ⏭ pair
+ * frames them); their titles name them. Named once so labels cannot drift.
  */
 const LABEL = {
   toStart: '⏮',
+  toEnd: '⏭',
   stepBack: '‹ step',
   stepFwd: 'step ›',
-  play: '▶ play',
-  pause: '❚❚ pause',
+  play: '▶',
+  pause: '❚❚',
 };
 
 export function ReplayBar({
@@ -53,6 +54,7 @@ export function ReplayBar({
   onSeek,
   onStep,
   onToStart,
+  onToEnd,
   onTogglePlay,
   onSetRate,
   onLive,
@@ -211,6 +213,15 @@ export function ReplayBar({
           aria-label="step forward"
         >
           {LABEL.stepFwd}
+        </button>
+        <button
+          class="ghost to-end"
+          disabled={off}
+          onClick={() => onToEnd?.()}
+          title="to the end"
+          aria-label="to the end"
+        >
+          {LABEL.toEnd}
         </button>
       </div>
 

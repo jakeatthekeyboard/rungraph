@@ -1196,6 +1196,7 @@ export function App() {
               onSeek={seekReplay}
               onStep={stepReplay}
               onToStart={() => seekReplay(0)}
+              onToEnd={() => seekReplay(timeline?.events?.length ?? 0)}
               onTogglePlay={togglePlay}
               onSetRate={setReplayRate}
               onLive={goLive}
