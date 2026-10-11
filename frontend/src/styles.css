@@ -1,61 +1,105 @@
-/* rungraph — flight-recorder aesthetic. Warm ink, phosphor amber, precise. */
+/* rungraph — dbt Canvas look: slate surfaces, card nodes, dotted ground. */
 
 :root {
-  --bg: oklch(0.17 0.012 60);
-  --bg-panel: oklch(0.20 0.014 60);
-  --bg-raised: oklch(0.24 0.016 62);
-  --bg-canvas: oklch(0.155 0.011 58);
-  --hairline: oklch(0.31 0.016 62);
-  --hairline-soft: oklch(0.26 0.014 62);
-  --ink: oklch(0.91 0.018 78);
-  --ink-dim: oklch(0.64 0.02 72);
-  --ink-faint: oklch(0.47 0.018 68);
+  /* dbt Canvas look: neutral slate surfaces, white-on-dark cards, an indigo
+     accent for selection and focus. Dark is the default; [data-theme="light"]
+     on <html> swaps every token below (main.jsx sets it from localStorage). */
+  color-scheme: dark;
+  --bg: #15171c;
+  --bg-panel: #1b1e24;
+  --bg-raised: #252932;
+  --bg-canvas: #111317;
+  --canvas-dot: #2c313b;
+  --card: #1f232a;
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.25);
+  --hairline: #343a45;
+  --hairline-soft: #282c34;
+  --ink: #e7e9ee;
+  --ink-dim: #a1a8b5;
+  --ink-faint: #6c7483;
 
-  --amber: oklch(0.79 0.13 78);
-  --amber-dim: oklch(0.55 0.09 78);
-  --sage: oklch(0.70 0.075 148);
-  --sage-dim: oklch(0.45 0.05 148);
-  --clay: oklch(0.64 0.15 32);
-  --clay-dim: oklch(0.45 0.10 32);
-  --violet: oklch(0.72 0.09 300);
-  /* Per-adapter accents: claude wears the house amber, codex a steel blue —
-     the one hue family the palette doesn't otherwise use — hermes a violet,
-     nudged past --violet's hue so a hermes tag never reads as the
-     workflow/provenance violet, and opencode a teal. One hue per agent, worn
-     at every point identity appears: rail chip, row tag, header tag,
-     inspector line.
-
-     Teal is not a taste call, it is the last real gap. Every hue this palette
-     already spends sits at 32 (clay/error), 58–78 (the warm neutrals plus
-     amber), 145–148 (sage/completed), 235 (steel), and 300–310 (violet and
-     hermes). The one arc nothing occupies runs 148 → 235, and 192 is its
-     midpoint: 44° off sage and 43° off steel, the farthest an agent colour can
-     get from both neighbours at once. That distance is the whole point — sage
-     means "completed" and clay means "error" on the very same canvas, so an
-     agent hue that drifted toward either would be read as a status. */
+  /* Selection, focus, on-states: the dbt Canvas indigo. */
+  --accent: oklch(0.68 0.16 280);
+  --accent-dim: oklch(0.50 0.12 280);
+  /* Running, live, human, edge reasons: the dbt orange. */
+  --amber: oklch(0.74 0.16 50);
+  --amber-dim: oklch(0.55 0.11 50);
+  --sage: oklch(0.72 0.14 155);
+  --sage-dim: oklch(0.50 0.08 155);
+  --clay: oklch(0.66 0.19 25);
+  --clay-dim: oklch(0.47 0.12 25);
+  --violet: oklch(0.72 0.11 305);
+  --group-fill: oklch(0.30 0.04 300 / 0.18);
+  --group-stroke: oklch(0.45 0.06 300 / 0.6);
+  --overlay: rgb(0 0 0 / 0.55);
+  --pop-shadow: 0 18px 50px rgb(0 0 0 / 0.5);
+  /* Per-adapter accents, one hue per agent, worn at every point identity
+     appears: rail chip, row tag, header tag, inspector line. Teal sits in the
+     148 → 235 gap so no agent hue reads as a status (sage/clay). */
   --steel: oklch(0.72 0.075 235);
   --hermes: oklch(0.73 0.1 310);
   --hermes-dim: oklch(0.52 0.07 310);
   --opencode: oklch(0.74 0.09 192);
+  --opencode-dim: oklch(0.53 0.065 192);
   --cursor: oklch(0.74 0.11 355);
   --cursor-dim: oklch(0.52 0.08 355);
-  --opencode-dim: oklch(0.53 0.065 192);
 
-  --node-turn: oklch(0.26 0.02 68);
-  --node-agent: oklch(0.24 0.02 145);
-  --node-tool: oklch(0.23 0.015 62);
-  --node-workflow: oklch(0.25 0.03 300);
-  --node-human: oklch(0.27 0.05 78);
+  /* Cards are uniform like dbt's; the kind reads from the icon dot. */
+  --node-turn: var(--card);
+  --node-agent: var(--card);
+  --node-tool: var(--card);
+  --node-workflow: var(--card);
+  --node-human: color-mix(in oklch, var(--accent) 9%, var(--card));
+  --kind-turn: var(--accent);
+  --kind-agent: var(--sage);
+  --kind-tool: var(--ink-faint);
+  --kind-workflow: var(--violet);
+  --kind-human: var(--accent);
 
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ui: Inter, "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  /* The inspector is open for the whole life of a loaded run now (it answers
-     "what's in this run" when nothing is selected), so on a narrow window it is
-     a permanent tax on the canvas rather than an occasional one. 30vw is a no-op
-     at 1280px and wider — it only gives ground where the graph would otherwise
-     be squeezed to a sliver. Kept in sync with canvas.jsx's width compensation. */
+  /* The inspector is open for the whole life of a loaded run, so on a narrow
+     window 30vw keeps it from squeezing the graph to a sliver. Kept in sync
+     with canvas.jsx's width compensation. */
   --inspector-w: min(384px, 30vw);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-raised: #f2f4f7;
+  --bg-canvas: #f7f8fa;
+  --canvas-dot: #d3d7de;
+  --card: #ffffff;
+  --card-shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 1px 3px rgb(16 24 40 / 0.08);
+  --hairline: #dde1e7;
+  --hairline-soft: #e8ebef;
+  --ink: #1a1d23;
+  --ink-dim: #545c6b;
+  --ink-faint: #8a92a0;
+
+  --accent: oklch(0.52 0.21 278);
+  --accent-dim: oklch(0.70 0.12 278);
+  --amber: oklch(0.64 0.18 45);
+  --amber-dim: oklch(0.78 0.10 50);
+  --sage: oklch(0.58 0.14 155);
+  --sage-dim: oklch(0.74 0.08 155);
+  --clay: oklch(0.57 0.20 25);
+  --clay-dim: oklch(0.75 0.10 25);
+  --violet: oklch(0.55 0.15 305);
+  --group-fill: oklch(0.95 0.02 300 / 0.5);
+  --group-stroke: oklch(0.75 0.06 300 / 0.8);
+  --overlay: rgb(16 24 40 / 0.35);
+  --pop-shadow: 0 18px 50px rgb(16 24 40 / 0.18);
+  --steel: oklch(0.55 0.10 235);
+  --hermes: oklch(0.55 0.13 310);
+  --hermes-dim: oklch(0.75 0.08 310);
+  --opencode: oklch(0.56 0.10 192);
+  --opencode-dim: oklch(0.76 0.06 192);
+  --cursor: oklch(0.57 0.15 355);
+  --cursor-dim: oklch(0.77 0.08 355);
 }
 
 * { box-sizing: border-box; }
@@ -120,6 +164,7 @@ body {
   border: none;
   cursor: pointer;
 }
+.theme-toggle { flex: none; padding: 2px 8px; font-size: 13px; line-height: 1; }
 .header .run-title .copy-title:hover { color: var(--ink); }
 
 .microlabel {
@@ -171,9 +216,9 @@ button.ghost {
 }
 button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 button.ghost[data-on="true"] {
-  color: var(--amber);
-  border-color: color-mix(in oklch, var(--amber) 50%, transparent);
-  background: color-mix(in oklch, var(--amber) 10%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
+  background: color-mix(in oklch, var(--accent) 10%, transparent);
 }
 
 /* ---------- main columns ---------- */
@@ -273,10 +318,10 @@ button.ghost[data-on="true"] {
   font-size: 10.5px;
   color: var(--ink-faint);
 }
-.picker .project-toggle .count .live { color: var(--amber); font-size: 8px; }
+.picker .project-toggle .count .live { color: var(--accent); font-size: 8px; }
 /* Collapsed group holding the open run: keep the selection visible on the header. */
 .picker .project-group[data-open="false"][data-holds-selection="true"] .microlabel {
-  color: var(--amber);
+  color: var(--accent);
 }
 .run-item {
   display: block;
@@ -293,8 +338,8 @@ button.ghost[data-on="true"] {
 }
 .run-item:hover { background: var(--bg-raised); }
 .run-item[data-selected="true"] {
-  background: color-mix(in oklch, var(--amber) 7%, var(--bg-raised));
-  border-left-color: var(--amber);
+  background: color-mix(in oklch, var(--accent) 7%, var(--bg-raised));
+  border-left-color: var(--accent);
 }
 .run-item .title {
   color: var(--ink);
@@ -312,7 +357,7 @@ button.ghost[data-on="true"] {
   font-size: 10.5px;
   color: var(--ink-faint);
 }
-.run-item .sub .live { color: var(--amber); }
+.run-item .sub .live { color: var(--accent); }
 .run-item .sub .kind-workflow { color: var(--violet); }
 .picker .project-group { margin-bottom: 6px; }
 .picker .empty {
@@ -321,7 +366,7 @@ button.ghost[data-on="true"] {
 }
 .picker .empty code {
   font-family: var(--mono);
-  color: var(--amber);
+  color: var(--accent);
 }
 
 /* ---------- centre column: strip over canvas ---------- */
@@ -436,7 +481,7 @@ button.ghost[data-on="true"] {
 
 /* The kv row is always present, at any coverage — it goes quietly amber only
    when something actually went unread. */
-.inspector .kv dd[data-partial="true"] { color: var(--amber); }
+.inspector .kv dd[data-partial="true"] { color: var(--accent); }
 
 /* The undo pill sits with find, pinned right — it must survive a crowded strip
    for the same reason the note does. */
@@ -499,7 +544,7 @@ button.ghost[data-on="true"] {
   min-width: 0;
   min-height: 0;
   background:
-    radial-gradient(circle at 1px 1px, oklch(0.24 0.014 62 / 0.55) 1px, transparent 0) 0 0 / 22px 22px,
+    radial-gradient(circle at 1px 1px, var(--canvas-dot) 1px, transparent 0) 0 0 / 18px 18px,
     var(--bg-canvas);
   overflow: hidden;
 }
@@ -536,24 +581,24 @@ button.ghost[data-on="true"] {
 .minimap .mm-node[data-kind="turn"] { fill: var(--ink-dim); }
 .minimap .mm-node[data-kind="agent"] { fill: var(--sage); }
 .minimap .mm-node[data-kind="workflow"] { fill: var(--violet); }
-.minimap .mm-node[data-kind="human"] { fill: var(--amber); }
+.minimap .mm-node[data-kind="human"] { fill: var(--accent); }
 /* After the kind rules on purpose: a focused node reads as focused first. The
    non-scaling stroke blooms it past the 2px floor, so a focus that is off-screen
    in the main view is still findable here. */
 .minimap .mm-node[data-focused="true"] {
-  fill: var(--amber);
-  stroke: var(--amber);
+  fill: var(--accent);
+  stroke: var(--accent);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 .minimap .mm-group {
   fill: none;
-  stroke: oklch(0.35 0.03 300 / 0.5);
+  stroke: var(--group-stroke);
 }
 .minimap .mm-beacon { fill: var(--clay); }
 .minimap .mm-view {
-  fill: oklch(0.79 0.13 78 / 0.08);
-  stroke: var(--amber);
+  fill: color-mix(in oklch, var(--accent) 10%, transparent);
+  stroke: var(--accent);
   cursor: grab;
 }
 .banners {
@@ -610,7 +655,7 @@ button.ghost[data-on="true"] {
 .node[data-dim="true"], .edge[data-dim="true"] { opacity: 0.25; }
 .node .ring {
   fill: none;
-  stroke: var(--amber);
+  stroke: var(--accent);
   stroke-width: 1.6;
   stroke-opacity: 0.85;
 }
@@ -628,13 +673,14 @@ button.ghost[data-on="true"] {
 }
 
 .node rect.body {
-  fill: var(--bg-raised);
+  fill: var(--card);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.18));
   stroke: var(--hairline);
   stroke-width: 1;
   transition: stroke 120ms ease-out;
 }
 .node:hover rect.body { stroke: var(--ink-faint); }
-.node[data-selected="true"] rect.body { stroke: var(--amber); stroke-width: 1.4; }
+.node[data-selected="true"] rect.body { stroke: var(--accent); stroke-width: 1.4; }
 
 .node[data-kind="turn"] rect.body { fill: var(--node-turn); }
 .node[data-kind="agent"] rect.body { fill: var(--node-agent); }
@@ -656,6 +702,13 @@ button.ghost[data-on="true"] {
   0%, 100% { stroke-opacity: 0.55; }
   50% { stroke-opacity: 1; }
 }
+
+.node .kind-dot { fill: var(--kind-tool); }
+.node[data-kind="turn"] .kind-dot { fill: var(--kind-turn); }
+.node[data-kind="agent"] .kind-dot { fill: var(--kind-agent); }
+.node[data-kind="workflow"] .kind-dot { fill: var(--kind-workflow); }
+.node[data-kind="human"] .kind-dot { fill: var(--kind-human); }
+.node[data-future="true"] .kind-dot { display: none; }
 
 .node text { font-family: var(--ui); font-size: 11.5px; fill: var(--ink); }
 .node text.meta { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-dim); }
@@ -713,11 +766,11 @@ button.ghost[data-on="true"] {
 .edge .edge-order text { fill: var(--ink-dim); font-size: 8.5px; }
 .edge[data-kind="spawn"] .edge-order rect,
 .edge[data-kind="return"] .edge-order rect { stroke: var(--sage-dim); }
-.edge marker path { fill: var(--sage-dim); stroke: none; }
+.edge marker path, #arrow path { fill: var(--sage-dim); stroke: none; }
 
 .group-box rect {
-  fill: oklch(0.20 0.02 300 / 0.25);
-  stroke: oklch(0.35 0.03 300 / 0.6);
+  fill: var(--group-fill);
+  stroke: var(--group-stroke);
   stroke-dasharray: 4 4;
   rx: 10;
 }
@@ -755,7 +808,7 @@ button.ghost[data-on="true"] {
   transition: background 120ms ease-out;
 }
 .inspector-resize:hover,
-:root[data-resizing="inspector"] .inspector-resize { background: color-mix(in oklch, var(--amber) 45%, transparent); }
+:root[data-resizing="inspector"] .inspector-resize { background: color-mix(in oklch, var(--accent) 45%, transparent); }
 /* While dragging: no width animation (it would lag the pointer), no text
    selection, and the resize cursor everywhere. */
 :root[data-resizing="inspector"] .inspector,
@@ -789,7 +842,7 @@ button.ghost[data-on="true"] {
 .kv dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
 .kv dd[data-status="completed"] { color: var(--sage); }
 .kv dd[data-status="error"] { color: var(--clay); }
-.kv dd[data-status="running"] { color: var(--amber); }
+.kv dd[data-status="running"] { color: var(--accent); }
 
 .inspector pre {
   background: var(--bg);
@@ -816,7 +869,7 @@ button.ghost[data-on="true"] {
   margin-bottom: 2px;
 }
 .transcript-entry .who[data-role="assistant"] { color: var(--sage); }
-.transcript-entry .who[data-role="user"] { color: var(--amber); }
+.transcript-entry .who[data-role="user"] { color: var(--accent); }
 .transcript-entry .tool-used {
   font-size: 12px;
   color: var(--ink-faint);
@@ -888,8 +941,8 @@ button.ghost[data-on="true"] {
 }
 .inspector .row[data-severity="high"] .glyph { color: var(--clay); }
 .inspector .row[data-on="true"] {
-  background: color-mix(in oklch, var(--amber) 9%, transparent);
-  border-left-color: var(--amber);
+  background: color-mix(in oklch, var(--accent) 9%, transparent);
+  border-left-color: var(--accent);
   color: var(--ink);
 }
 .inspector .focus-reason {
@@ -921,10 +974,10 @@ button.ghost[data-on="true"] {
   text-align: right;
   color: var(--ink-faint);
 }
-.inspector .ask .row:hover .n { color: var(--amber); }
+.inspector .ask .row:hover .n { color: var(--accent); }
 .inspector .ask .setup code {
   font-family: var(--mono);
-  color: var(--amber-dim);
+  color: var(--accent-dim);
   font-size: 11px;
 }
 .inspector .ask .foot {
@@ -1031,7 +1084,7 @@ button.ghost[data-on="true"] {
   background: color-mix(in oklch, currentColor 12%, transparent);
 }
 .agent-rail .chip .n { color: var(--ink-faint); }
-.agent-rail .chip .live { color: var(--amber); font-size: 8px; }
+.agent-rail .chip .live { color: var(--accent); font-size: 8px; }
 
 /* ---------- share & reach layer ---------- */
 
@@ -1051,11 +1104,11 @@ button.ghost[data-on="true"] {
   white-space: nowrap;
 }
 .run-item .sub .provenance { color: var(--violet); }
-.run-item .sub .provenance.snap { color: var(--amber-dim); }
-.run-item .title .check { margin-right: 6px; color: var(--amber); }
+.run-item .sub .provenance.snap { color: var(--accent-dim); }
+.run-item .title .check { margin-right: 6px; color: var(--accent); }
 .run-item[data-checked="true"] {
-  background: color-mix(in oklch, var(--amber) 7%, var(--bg-raised));
-  border-left-color: var(--amber-dim);
+  background: color-mix(in oklch, var(--accent) 7%, var(--bg-raised));
+  border-left-color: var(--accent-dim);
 }
 
 .picker-tools {
@@ -1080,12 +1133,12 @@ button.ghost[data-on="true"] {
 .picker-tools .run-search::placeholder { color: var(--ink-faint); }
 .picker-tools .run-search:focus {
   outline: none;
-  border-color: color-mix(in oklch, var(--amber) 55%, transparent);
+  border-color: color-mix(in oklch, var(--accent) 55%, transparent);
 }
 .picker-tools .run-search::-webkit-search-cancel-button { filter: invert(0.6); }
 .picker-tools .primary {
-  color: var(--amber);
-  border-color: color-mix(in oklch, var(--amber) 45%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 45%, transparent);
 }
 .picker-tools .primary:disabled { opacity: 0.45; cursor: default; }
 
@@ -1109,8 +1162,8 @@ button.ghost[data-on="true"] {
   align-items: center;
   gap: 10px;
   padding: 7px 12px;
-  border-bottom: 1px solid color-mix(in oklch, var(--amber) 40%, transparent);
-  background: color-mix(in oklch, var(--amber) 10%, var(--bg-panel));
+  border-bottom: 1px solid color-mix(in oklch, var(--accent) 40%, transparent);
+  background: color-mix(in oklch, var(--accent) 10%, var(--bg-panel));
   font-family: var(--mono);
   font-size: 11.5px;
   color: var(--ink);
@@ -1118,13 +1171,13 @@ button.ghost[data-on="true"] {
 }
 .link-banner .jump {
   flex: none;
-  color: var(--amber);
+  color: var(--accent);
   text-decoration: none;
-  border: 1px solid color-mix(in oklch, var(--amber) 50%, transparent);
+  border: 1px solid color-mix(in oklch, var(--accent) 50%, transparent);
   border-radius: 6px;
   padding: 2px 10px;
 }
-.link-banner .jump:hover { background: color-mix(in oklch, var(--amber) 12%, transparent); }
+.link-banner .jump:hover { background: color-mix(in oklch, var(--accent) 12%, transparent); }
 
 /* ---------- export dialog ---------- */
 .export-overlay {
@@ -1133,7 +1186,7 @@ button.ghost[data-on="true"] {
   z-index: 40;
   display: grid;
   place-items: center;
-  background: oklch(0.1 0.01 60 / 0.6);
+  background: var(--overlay);
 }
 .export-dialog {
   width: min(560px, calc(100vw - 40px));
@@ -1143,7 +1196,7 @@ button.ghost[data-on="true"] {
   border: 1px solid var(--hairline);
   border-radius: 12px;
   padding: 18px 20px 16px;
-  box-shadow: 0 18px 50px oklch(0.05 0.01 60 / 0.55);
+  box-shadow: var(--pop-shadow);
 }
 .export-dialog h2 { font-size: 15px; font-weight: 600; margin: 4px 0 12px; }
 .export-dialog .loading { color: var(--ink-faint); font-family: var(--mono); padding: 12px 0; }
@@ -1168,7 +1221,7 @@ button.ghost[data-on="true"] {
   color: var(--ink);
 }
 .export-inventory .line .tag { flex: none; color: var(--ink-faint); text-transform: uppercase; font-size: 9.5px; }
-.export-inventory .line .snap { flex: none; color: var(--amber); font-size: 10px; }
+.export-inventory .line .snap { flex: none; color: var(--accent); font-size: 10px; }
 .export-inventory .line.sensitive { color: var(--clay); overflow-wrap: anywhere; }
 
 .export-findings {
@@ -1194,7 +1247,7 @@ button.ghost[data-on="true"] {
 }
 .export-tiers label b { color: var(--ink); font-weight: 500; }
 .export-tiers label.allow { color: var(--clay); margin-left: 20px; }
-.export-tiers input { accent-color: var(--amber); }
+.export-tiers input { accent-color: var(--accent); }
 
 .export-as { display: flex; align-items: center; gap: 10px; margin: 12px 2px; }
 .export-as input {
@@ -1208,12 +1261,12 @@ button.ghost[data-on="true"] {
   border-radius: 6px;
   padding: 4px 9px;
 }
-.export-as input:focus { outline: none; border-color: color-mix(in oklch, var(--amber) 55%, transparent); }
+.export-as input:focus { outline: none; border-color: color-mix(in oklch, var(--accent) 55%, transparent); }
 
 .export-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .export-actions .primary {
-  color: var(--amber);
-  border-color: color-mix(in oklch, var(--amber) 50%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
 }
 .export-actions .primary:disabled { opacity: 0.45; cursor: default; }
 
@@ -1223,7 +1276,7 @@ button.ghost[data-on="true"] {
   font-size: 11px;
   line-height: 1.7;
 }
-.export-foot code { font-family: var(--mono); color: var(--amber-dim); }
+.export-foot code { font-family: var(--mono); color: var(--accent-dim); }
 .export-foot .incantation {
   font: inherit;
   background: none;
@@ -1232,7 +1285,7 @@ button.ghost[data-on="true"] {
   cursor: pointer;
   color: var(--ink-dim);
 }
-.export-foot .incantation:hover code { color: var(--amber); }
+.export-foot .incantation:hover code { color: var(--accent); }
 
 /* ---------- resume (picker hover action + popover) ---------- */
 .run-row { position: relative; }
@@ -1263,7 +1316,7 @@ button.ghost[data-on="true"] {
   border: 1px solid var(--hairline);
   border-radius: 10px;
   padding: 12px 14px;
-  box-shadow: 0 12px 36px oklch(0.05 0.01 60 / 0.5);
+  box-shadow: var(--pop-shadow);
 }
 .resume-popover .resume-cmd {
   display: block;
@@ -1288,18 +1341,18 @@ button.ghost[data-on="true"] {
   color: var(--ink-dim);
   cursor: pointer;
 }
-.resume-popover .resume-fork input { accent-color: var(--amber); }
+.resume-popover .resume-fork input { accent-color: var(--accent); }
 .resume-popover .resume-warn {
   margin: 7px 2px 0;
   font-family: var(--mono);
   font-size: 10.5px;
   color: var(--clay);
 }
-.resume-popover .resume-warn.fork { color: var(--amber); }
+.resume-popover .resume-warn.fork { color: var(--accent); }
 .resume-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .resume-actions .primary {
-  color: var(--amber);
-  border-color: color-mix(in oklch, var(--amber) 50%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
 }
 .resume-actions .primary:disabled { opacity: 0.45; cursor: default; }
 
@@ -1343,8 +1396,8 @@ button.ghost[data-on="true"] {
   text-align: center;
 }
 .replay-bar .play[aria-pressed="true"] {
-  color: var(--amber);
-  border-color: color-mix(in oklch, var(--amber) 50%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
 }
 
 /* The scrubber: a 12px hit area over a 2px hairline. Event index, not wall
@@ -1370,7 +1423,7 @@ button.ghost[data-on="true"] {
   pointer-events: none;
 }
 .replay-bar .track { right: 0; background: var(--hairline); }
-.replay-bar .played { background: var(--amber); }
+.replay-bar .played { background: var(--accent); }
 /* Nubs: one tick per step the playhead can stop at. Short for a step, tall
    where a node appears; amber once the playhead has passed them. */
 .replay-bar .nubs { position: absolute; inset: 0; pointer-events: none; }
@@ -1384,7 +1437,7 @@ button.ghost[data-on="true"] {
   background: var(--ink-faint);
 }
 .replay-bar .nub[data-kind="start"] { height: 10px; margin-top: -5px; background: var(--ink-dim); }
-.replay-bar .nub[data-past="true"] { background: color-mix(in oklch, var(--amber) 70%, var(--ink-faint)); }
+.replay-bar .nub[data-past="true"] { background: color-mix(in oklch, var(--accent) 70%, var(--ink-faint)); }
 /* Step numbers: pills like the canvas's edge numbers, centred on their nub. */
 .replay-bar .num {
   position: absolute;
@@ -1404,15 +1457,15 @@ button.ghost[data-on="true"] {
   pointer-events: auto;
 }
 .replay-bar .num:hover { color: var(--ink); border-color: var(--ink-faint); }
-.replay-bar .num[data-past="true"] { border-color: color-mix(in oklch, var(--amber) 60%, transparent); }
-.replay-bar .num[data-here="true"] { color: var(--bg); background: var(--amber); border-color: var(--amber); }
+.replay-bar .num[data-past="true"] { border-color: color-mix(in oklch, var(--accent) 60%, transparent); }
+.replay-bar .num[data-here="true"] { color: var(--bg); background: var(--accent); border-color: var(--accent); }
 .replay-bar .playhead {
   position: absolute;
   top: 0;
   width: 2px;
   height: 12px;
   margin-left: -1px;
-  background: var(--amber);
+  background: var(--accent);
   pointer-events: none;
 }
 
@@ -1439,7 +1492,7 @@ button.ghost[data-on="true"] {
   transition: color 100ms ease-out;
 }
 .replay-bar .marker:hover { color: var(--ink); }
-.replay-bar .marker[data-kind="human"] { color: var(--amber); }
+.replay-bar .marker[data-kind="human"] { color: var(--accent); }
 .replay-bar .marker[data-kind="human"]:hover { color: var(--ink); }
 
 /* Readout: the wall-clock time at the playhead and `step / total`. Tabular
@@ -1493,6 +1546,7 @@ button.ghost[data-on="true"] {
   fill: none;
   stroke: var(--ink);
   stroke-opacity: 0.12;
+  filter: none;
   animation: none;
 }
 .edge[data-future="true"] { opacity: 0.08; }

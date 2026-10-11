@@ -577,7 +577,7 @@ export function Canvas({
       >
         <defs>
           <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 8 4 L 0 8 z" fill="oklch(0.45 0.05 148)" />
+            <path d="M 0 0 L 8 4 L 0 8 z" />
           </marker>
         </defs>
         <g transform={`translate(${view.tx} ${view.ty}) scale(${view.scale})`}>
@@ -870,7 +870,7 @@ const NodeView = memo(function NodeView({ node, pos, order, selected, focused, d
         data-node-id={node.id}
         transform={`translate(${pos.x} ${pos.y})`}
       >
-        <rect class="body" width={pos.w} height={pos.h} rx="8" />
+        <rect class="body" width={pos.w} height={pos.h} rx="6" />
       </g>
     );
   }
@@ -900,15 +900,16 @@ const NodeView = memo(function NodeView({ node, pos, order, selected, focused, d
       transform={`translate(${pos.x} ${pos.y})`}
     >
       {focused && (
-        <rect class="ring" x="-3" y="-3" width={pos.w + 6} height={pos.h + 6} rx="11" />
+        <rect class="ring" x="-3" y="-3" width={pos.w + 6} height={pos.h + 6} rx="9" />
       )}
-      <rect class="body" width={pos.w} height={pos.h} rx="8" />
+      <rect class="body" width={pos.w} height={pos.h} rx="6" />
       <rect class="status" x="0" y="6" width="3" height={pos.h - 12} rx="1.5" />
       <clipPath id={clip}>
         <rect x="10" y="0" width={pos.w - 18} height={pos.h} />
       </clipPath>
       <g clip-path={`url(#${clip})`}>
-        <text class="kindtag" x="12" y="14">
+        <circle class="kind-dot" cx="15.5" cy="11" r="3" />
+        <text class="kindtag" x="23" y="14">
           {order !== undefined && <tspan class="order">{order}{'  ·  '}</tspan>}
           {node.kind === 'human' ? node.interventionKind ?? 'human' : KIND_TAGS[node.kind]}
           {node.kind === 'workflow' ? '  ⌄ drill in' : ''}

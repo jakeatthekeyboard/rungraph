@@ -6,6 +6,7 @@ import { Strip, SIGNAL_GLYPHS } from './strip.jsx';
 import { ReplayBar } from './replay-bar.jsx';
 import { ExportDialog } from './export.jsx';
 import { ResumePopover } from './resume.jsx';
+import { setTheme, storedTheme } from './theme.js';
 import {
   safeTimeline,
   cursorOf,
@@ -66,6 +67,7 @@ const embedNarrow = () =>
 
 export function App() {
   const [index, setIndex] = useState(null);
+  const [theme, setThemeState] = useState(storedTheme);
   // A deep link (#run=…&sel=…&f=…) wins over the plain ?run= param: the hash
   // carries focus state the search param cannot.
   const [runId, setRunId] = useState(
@@ -1047,6 +1049,18 @@ export function App() {
             {follow ? 'following' : 'follow'}
           </button>
         )}
+        <button
+          class="ghost theme-toggle"
+          onClick={() => {
+            const next = theme === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+            setThemeState(next);
+          }}
+          title={theme === 'dark' ? 'switch to light mode' : 'switch to dark mode'}
+          aria-label="toggle light and dark mode"
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
         {graph && (
           <button
             class="ghost pane-toggle"
