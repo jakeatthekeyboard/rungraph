@@ -16,6 +16,7 @@ import {
   tickAfter,
   validCallOffsets,
   edgeOrder,
+  nodeOrder,
 } from '../src/timeline.js';
 import {
   pinFixtureMtimes,
@@ -818,40 +819,56 @@ describe('purity', () => {
   });
 });
 
-describe('edgeOrder numbers edges in the order they happened', () => {
+describe('edgeOrder numbers edges in the order replay draws them', () => {
   const at = (s) => `2026-10-11T14:${s}Z`;
-  // An orchestrator fans out to three agents (started b, a, c), which then
-  // return to one turn. Array order is deliberately not time order.
+  // A turn fans out to three agents (started b, a, c; finished c, b, a),
+  // and each returns to the turn. Array order is deliberately not time order,
+  // and the returns point at the turn, which started FIRST — numbering by
+  // target start would put every return ahead of every spawn.
   const nodes = [
-    { id: 'turn', startedAt: at('16:50') },
-    { id: 'a', startedAt: at('16:56') },
-    { id: 'b', startedAt: at('16:55') },
-    { id: 'c', startedAt: at('16:57') },
-    { id: 'end', startedAt: at('17:30') },
+    { id: 'turn', startedAt: at('16:50'), endedAt: at('17:40') },
+    { id: 'a', startedAt: at('16:56'), endedAt: at('17:20') },
+    { id: 'b', startedAt: at('16:55'), endedAt: at('17:10') },
+    { id: 'c', startedAt: at('16:57'), endedAt: at('17:05') },
   ];
   const edges = [
-    { id: 'e-a', from: 'turn', to: 'a' },
-    { id: 'e-c', from: 'turn', to: 'c' },
-    { id: 'e-b', from: 'turn', to: 'b' },
-    { id: 'r-c', from: 'c', to: 'end' },
-    { id: 'r-a', from: 'a', to: 'end' },
-    { id: 'r-b', from: 'b', to: 'end' },
+    { id: 'r-a', kind: 'return', from: 'a', to: 'turn' },
+    { id: 'e-a', kind: 'spawn', from: 'turn', to: 'a' },
+    { id: 'r-b', kind: 'return', from: 'b', to: 'turn' },
+    { id: 'e-c', kind: 'spawn', from: 'turn', to: 'c' },
+    { id: 'r-c', kind: 'return', from: 'c', to: 'turn' },
+    { id: 'e-b', kind: 'spawn', from: 'turn', to: 'b' },
   ];
 
-  it('ranks by when the target started, then by the source', () => {
+  it('numbers spawns by start and returns by when the child finished', () => {
     const order = edgeOrder(nodes, edges);
     expect(order.get('e-b')).toBe(1);
     expect(order.get('e-a')).toBe(2);
     expect(order.get('e-c')).toBe(3);
-    // the returns share a target, so their sources' start order decides
-    expect(order.get('r-b')).toBe(4);
-    expect(order.get('r-a')).toBe(5);
-    expect(order.get('r-c')).toBe(6);
+    expect(order.get('r-c')).toBe(4);
+    expect(order.get('r-b')).toBe(5);
+    expect(order.get('r-a')).toBe(6);
   });
 
-  it('gives every numbered edge a distinct number from 1', () => {
-    const nums = [...edgeOrder(nodes, edges).values()].sort((x, y) => x - y);
-    expect(nums).toEqual([1, 2, 3, 4, 5, 6]);
+  it('agrees with the order replay reveals edges in', () => {
+    const ir = { nodes, edges };
+    const events = buildTimeline(ir);
+    const index = indexEvents(events);
+    const seen = [];
+    for (let c = 0; c <= events.length; c++) {
+      for (const id of stateAt(ir, events, c, index).edgePresent) if (!seen.includes(id)) seen.push(id);
+    }
+    const order = edgeOrder(nodes, edges);
+    expect(seen.map((id) => order.get(id))).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('gives each node the number of the edge that brought it in', () => {
+    const nums = nodeOrder(edges, edgeOrder(nodes, edges));
+    expect(nums.get('b')).toBe(1);
+    expect(nums.get('a')).toBe(2);
+    expect(nums.get('c')).toBe(3);
+    expect(nums.has('turn')).toBe(false); // only returns lead into it
+    expect(nodeOrder(null, null).size).toBe(0);
   });
 
   it('skips edges it cannot place, and never throws', () => {
@@ -859,7 +876,7 @@ describe('edgeOrder numbers edges in the order they happened', () => {
       { from: 'turn', to: 'a' },
       { id: 'dangling', from: 'turn', to: 'ghost' },
       null,
-      { id: 'ok', from: 'turn', to: 'b' },
+      { id: 'ok', kind: 'spawn', from: 'turn', to: 'b' },
     ]);
     expect([...order]).toEqual([['ok', 1]]);
     expect(edgeOrder(null, null).size).toBe(0);

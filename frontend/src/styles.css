@@ -666,6 +666,7 @@ button.ghost[data-on="true"] {
   fill: var(--ink-faint);
   text-transform: uppercase;
 }
+.node text.kindtag tspan.order { fill: var(--ink-dim); font-weight: 600; }
 .node[data-kind="human"] text.kindtag { fill: color-mix(in oklch, var(--amber) 75%, var(--ink-faint)); }
 
 /* Revert renders ORTHOGONALLY to focus, and this is load-bearing: opacity is

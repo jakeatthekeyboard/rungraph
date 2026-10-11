@@ -10,7 +10,7 @@ import { memo } from 'preact/compat';
 import { layoutGraph, edgePath } from './layout.js';
 import { badgedNodeIds, nodeMarks } from './focus.js';
 import { replayLabel } from './replay.js';
-import { runOrder, edgeOrder } from '../../src/timeline.js';
+import { runOrder, edgeOrder, nodeOrder } from '../../src/timeline.js';
 import {
   zoomAtPoint,
   normalizeWheel,
@@ -341,6 +341,8 @@ export function Canvas({
   const orderedNodes = useMemo(() => (graph ? runOrder(graph.nodes) : []), [graph]);
   // The number on each edge: the order it happened in (see edgeOrder).
   const edgeNumbers = useMemo(() => (graph ? edgeOrder(graph.nodes, graph.edges) : new Map()), [graph]);
+  // A node shows the number of the edge that brought it in (see nodeOrder).
+  const nodeNumbers = useMemo(() => (graph ? nodeOrder(graph.edges, edgeNumbers) : new Map()), [graph, edgeNumbers]);
 
   // Keyboard walk-through: j/k or ↓/↑ step chronologically (IR array order),
   // f fits, / opens find, Esc deselects and clears focus. No-ops without a
@@ -614,6 +616,7 @@ export function Canvas({
                   key={n.id}
                   node={n}
                   pos={pos}
+                  order={nodeNumbers.get(n.id)}
                   selected={selection?.type === 'node' && selection.id === n.id}
                   focused={marks.focused}
                   dim={marks.dim}
@@ -836,7 +839,7 @@ function Minimap({ graph, layout, view, box, focusIds, replayState, onJump, onSe
   );
 }
 
-const NodeView = memo(function NodeView({ node, pos, selected, focused, dim, reverted, future, badge, status, callsShown }) {
+const NodeView = memo(function NodeView({ node, pos, order, selected, focused, dim, reverted, future, badge, status, callsShown }) {
   // A ghost: the shape of what is coming, not its content. `rect.body` alone —
   // no text, no status bar, no badge, no ring, no revert mark, and no <title>
   // either, since a tooltip that names the node is content too. It keeps its
@@ -895,6 +898,7 @@ const NodeView = memo(function NodeView({ node, pos, selected, focused, dim, rev
       </clipPath>
       <g clip-path={`url(#${clip})`}>
         <text class="kindtag" x="12" y="14">
+          {order !== undefined && <tspan class="order">{order}{'  ·  '}</tspan>}
           {node.kind === 'human' ? node.interventionKind ?? 'human' : KIND_TAGS[node.kind]}
           {node.kind === 'workflow' ? '  ⌄ drill in' : ''}
         </text>

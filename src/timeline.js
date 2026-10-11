@@ -574,12 +574,14 @@ export function tickAfter(sched, cursor, rate = 1) {
 
 /**
  * The order each edge happened in, for the numbered badges on the canvas:
- * Map<edgeId, n>, n from 1. An edge is ranked by its TARGET's place in
- * `runOrder` (when the step it leads to began), ties broken by its source's
- * place, then by array order. So the three spawn edges of a fan-out read
- * 1, 2, 3 in the order the agents started, and every edge gets a distinct
- * number. Edges without an id, or whose ends are not nodes in the run, get
- * no number. Never throws.
+ * Map<edgeId, n>, n from 1. An edge is numbered by the moment REPLAY draws
+ * it, using the same rule `stateAt` uses: a `return` edge happens when its
+ * child ENDS (falling back to both ends present when the child has no end
+ * event), every other edge when both of its ends are present. Ties keep IR
+ * array order. So the first arrow a replay shows is 1, and the return
+ * arrows of a fan-out are numbered by when each agent finished, not by when
+ * the turn they return to began. Edges without an id, or whose ends are not
+ * nodes in the run, get no number. Never throws.
  *
  * @param {Array} nodes
  * @param {Array} edges
@@ -588,21 +590,44 @@ export function tickAfter(sched, cursor, rate = 1) {
 export function edgeOrder(nodes, edges) {
   const out = new Map();
   if (!Array.isArray(edges)) return out;
-  const rank = new Map();
-  runOrder(nodes).forEach((n, i) => {
-    if (n && n.id != null && !rank.has(n.id)) rank.set(n.id, i);
-  });
+  const list = Array.isArray(nodes) ? nodes : [];
+  const ids = new Set(list.filter((n) => n && typeof n.id === 'string').map((n) => n.id));
+  const byNode = indexEvents(buildTimeline({ nodes: list, edges })).byNode;
+  // A node the timeline never saw is present from the start, as in stateAt.
+  const startOf = (id) => byNode.get(id)?.startIdx ?? -1;
   const ranked = [];
   edges.forEach((e, i) => {
-    if (!e || e.id == null) return;
-    const to = rank.get(e.to);
-    const from = rank.get(e.from);
-    if (to === undefined || from === undefined) return;
-    ranked.push({ id: e.id, to, from, i });
+    if (!e || typeof e !== 'object' || typeof e.id !== 'string') return;
+    if (!ids.has(e.from) || !ids.has(e.to)) return;
+    const both = Math.max(startOf(e.from), startOf(e.to));
+    const child = byNode.get(e.from);
+    const at = e.kind === 'return' && child && child.endIdx !== null ? child.endIdx : both;
+    ranked.push({ id: e.id, at, i });
   });
-  ranked.sort((a, b) => a.to - b.to || a.from - b.from || a.i - b.i);
-  ranked.forEach((r, k) => {
-    if (!out.has(r.id)) out.set(r.id, out.size + 1);
-  });
+  ranked.sort((a, b) => a.at - b.at || a.i - b.i);
+  for (const r of ranked) if (!out.has(r.id)) out.set(r.id, out.size + 1);
+  return out;
+}
+
+/**
+ * The number each node shows in its heading: the number of the edge that
+ * brought it in — its lowest-numbered incoming edge that is not a `return`.
+ * In replay that edge appears in the same frame as the node, so the two
+ * numbers arrive together. A node no edge leads into (the run's first turn)
+ * gets no number. Map<nodeId, n>. Never throws.
+ *
+ * @param {Array} edges
+ * @param {Map<string, number>} numbers  from `edgeOrder`
+ * @returns {Map<string, number>}
+ */
+export function nodeOrder(edges, numbers) {
+  const out = new Map();
+  if (!Array.isArray(edges) || !(numbers instanceof Map)) return out;
+  for (const e of edges) {
+    if (!e || typeof e !== 'object' || e.kind === 'return') continue;
+    const n = numbers.get(e.id);
+    if (n === undefined || typeof e.to !== 'string') continue;
+    if (!out.has(e.to) || n < out.get(e.to)) out.set(e.to, n);
+  }
   return out;
 }
