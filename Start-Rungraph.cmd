@@ -17,11 +17,12 @@ rem A plain "npm install" also fetches the test tools (vitest and its
 rem dependencies), which some company package mirrors do not carry. So the
 rem three are installed into a scratch folder that has no package.json,
 rem using whatever registry npm is set up for, and moved into node_modules.
-rem Keep the versions in step with devDependencies in package.json.
+rem Keep the versions in step with devDependencies in package.json. Caret
+rem ranges cannot be used: "call" doubles every caret character.
 if exist "node_modules\.rungraph-build-deps" goto :build
 echo Installing the build packages, first run only...
 if exist ".build-deps\" rmdir /s /q ".build-deps"
-call npm install --prefix .build-deps --no-save --no-package-lock --no-audit --no-fund "esbuild@^0.24.0" "preact@^10.24.0" "elkjs@^0.9.3"
+call npm install --prefix .build-deps --no-save --no-package-lock --no-audit --no-fund "esbuild@0.24.x" "preact@10.x" "elkjs@0.9.x"
 if errorlevel 1 goto :fail
 robocopy ".build-deps\node_modules" "node_modules" /e /move /nfl /ndl /njh /njs /np >nul
 if errorlevel 8 goto :fail
