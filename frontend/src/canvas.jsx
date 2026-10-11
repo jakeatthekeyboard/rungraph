@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 // preact/compat is inside the preact package already — no new dependency.
 import { memo } from 'preact/compat';
 import { layoutGraph, edgePath } from './layout.js';
-import { inspectorWidth } from './panel-width.js';
+import { inspectorWidth, inspectorWidthSetting } from './panel-width.js';
 import { badgedNodeIds, nodeMarks } from './focus.js';
 import { replayLabel } from './replay.js';
 import { runOrder, edgeOrder, nodeOrder } from '../../src/timeline.js';
@@ -82,6 +82,9 @@ export function Canvas({
   // surfaced, so a reload starts honest again.
   const [noticeDismissedFor, setNoticeDismissedFor] = useState(null);
   const [view, setView] = useState({ tx: 40, ty: 30, scale: 1 });
+  // The panel width the view was last framed at, so a dragged panel edge
+  // can be told apart from the panel sliding open.
+  const placedPanelWidth = useRef(null);
   const [box, setBox] = useState(null);
   const [mmDragging, setMmDragging] = useState(false);
   const wrapRef = useRef(null);
@@ -183,7 +186,13 @@ export function Canvas({
       setView(initialView(layout, b, live, 40, anchorX(live)));
       placedLive.current = live;
       placedWidth.current = b.width;
+      placedPanelWidth.current = inspectorWidthSetting();
       userMoved.current = false;
+    } else if (inspectorWidthSetting() !== placedPanelWidth.current) {
+      // The user dragged the panel edge: keep the zoom and position exactly
+      // as they are, and treat the new width as the settled one.
+      placedWidth.current = b.width;
+      placedPanelWidth.current = inspectorWidthSetting();
     } else if (!userMoved.current && Math.abs(b.width - placedWidth.current) > 24) {
       // elk lays out in ~20ms while the inspector slides open over 180ms, so
       // the first frame is measured against a canvas that has not finished
@@ -191,6 +200,7 @@ export function Canvas({
       // stops moving — but never after the user has taken the view themselves.
       setView(initialView(layout, b, placedLive.current, 40, anchorX(placedLive.current)));
       placedWidth.current = b.width;
+      placedPanelWidth.current = inspectorWidthSetting();
     } else if (live && !placedLive.current && !userMoved.current) {
       // Deep-linked run: the graph can lay out before the index scan reveals
       // it is live. Re-anchor to the latest activity once we know — but only

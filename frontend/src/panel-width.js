@@ -6,6 +6,7 @@
 // is a convenience: if it is unavailable, resizing still works for the page.
 
 const KEY = 'rungraph.inspectorWidth';
+
 export const MIN_W = 260;
 const MIN_CANVAS = 240; // never squeeze the graph below this
 
@@ -22,6 +23,11 @@ export function maxInspectorWidth() {
 
 export function clampInspectorWidth(w) {
   return Math.round(Math.min(maxInspectorWidth(), Math.max(MIN_W, w)));
+}
+
+/** The width the user dragged to, as set on <html> ('' when never dragged). */
+export function inspectorWidthSetting() {
+  return document.documentElement.style.getPropertyValue('--inspector-w');
 }
 
 /** The panel's current width in px: the dragged width, or the default. */
