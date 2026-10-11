@@ -266,6 +266,10 @@ cd examples/playground
 claude
 ```
 
+The dashboard opens at http://127.0.0.1:4321. If it is already running,
+just open that address. `--project examples/playground` shows only playground
+runs; without it, you see runs from every project on your machine.
+
 | Command | Pattern it shows |
 |---|---|
 | `/pipeline` | sequential: researcher → writer → judge |
