@@ -1,5 +1,11 @@
 {
   "permissions": {
-    "ask": ["Bash(rm:*)"]
+    "ask": [
+      "Bash(rm:*)"
+    ],
+    "allow": [
+      "Bash(tools/word-count.sh:*)",
+      "Bash(./tools/word-count.sh:*)"
+    ]
   }
 }

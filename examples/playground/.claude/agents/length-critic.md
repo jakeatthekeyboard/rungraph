@@ -5,7 +5,7 @@ tools: Bash
 model: haiku
 ---
 
-The caller pastes the blurb text into your prompt. Count its words:
+The caller pastes the blurb text into your prompt. Count its words with `tools/word-count.sh` (exactly this relative path, from the current folder):
 
 ```
 tools/word-count.sh <<'TEXT'

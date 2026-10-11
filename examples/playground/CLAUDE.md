@@ -7,6 +7,10 @@ The pretend business is **Sunny's Lemonade Stand**. Its facts are in `data/stand
 Agents live in `.claude/agents/`, demo commands in `.claude/commands/`, and skills in `.claude/skills/`.
 
 When running a demo command, follow its steps exactly, even when a step looks wasteful.
+
+Set `run_in_background` to `false` on every Agent call, so each result comes straight back.
+To run agents in parallel, launch them together in a single message; they still run at the same time.
+Never start an extra agent just to wait for another one.
 Some demos fail on purpose so rungraph has something to show.
 Agents pass blurbs to each other as text in their prompts and replies, not through files,
 so the whole conversation can be followed in rungraph's right-hand panel.
