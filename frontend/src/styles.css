@@ -1346,6 +1346,20 @@ button.ghost[data-on="true"] {
 }
 .replay-bar .track { right: 0; background: var(--hairline); }
 .replay-bar .played { background: var(--amber); }
+/* Nubs: one tick per step the playhead can stop at. Short for a step, tall
+   where a node appears; amber once the playhead has passed them. */
+.replay-bar .nubs { position: absolute; inset: 0; pointer-events: none; }
+.replay-bar .nub {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 6px;
+  margin: -3px 0 0 -1px;
+  border-radius: 1px;
+  background: var(--ink-faint);
+}
+.replay-bar .nub[data-kind="start"] { height: 10px; margin-top: -5px; background: var(--ink-dim); }
+.replay-bar .nub[data-past="true"] { background: color-mix(in oklch, var(--amber) 70%, var(--ink-faint)); }
 .replay-bar .playhead {
   position: absolute;
   top: 0;

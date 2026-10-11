@@ -388,7 +388,10 @@ export function App() {
     setPlayingNow(false);
     setScrubbing(false);
   };
-  const toggleReplay = () => (replayRef.current === null ? openReplayBar() : closeReplay());
+  // The bar is always open now (see the effect below), so the header's
+  // `replay` button and the `r` key mean play/pause: from the end, ▶ replays
+  // the run from the start.
+  const toggleReplay = () => togglePlay();
   const seekReplay = (c, opts) => {
     if (replayRef.current === null) return;
     moveReplay(seekTo(timelineRef.current?.events ?? EMPTY, c), opts);
@@ -530,6 +533,14 @@ export function App() {
     const t = setTimeout(() => setLayoutStale(true), LAYOUT_STALE_MS);
     return () => clearTimeout(t);
   }, [layoutReady]);
+
+  // The replay bar is always available: whenever a run with a usable
+  // timeline is on screen and the bar is not open, open it at the EDGE. At the
+  // edge every node and edge is present, so the graph looks exactly as it did
+  // with the bar closed; nothing moves until the user scrubs, steps or plays.
+  useEffect(() => {
+    if (graph && replayAvailable && replayRef.current === null) setReplayNow(openReplay());
+  }, [graph, replayAvailable, replay]);
 
   // A delta that leaves the run without a usable timeline closes the bar: the
   // graph renders as today rather than over a state that no longer exists.
@@ -1011,11 +1022,11 @@ export function App() {
         {graph && (
           <button
             class="ghost"
-            data-on={String(replay !== null)}
+            data-on={String(playing)}
             onClick={toggleReplay}
             disabled={Boolean(timeline?.error)}
-            title={timeline?.error ? `replay unavailable for this run: ${timeline.error}` : 'replay this run  ( r )'}
-            aria-pressed={String(replay !== null)}
+            title={timeline?.error ? `replay unavailable for this run: ${timeline.error}` : 'play / pause the replay  ( r )'}
+            aria-pressed={String(playing)}
           >
             replay
           </button>
@@ -1167,7 +1178,6 @@ export function App() {
               onTogglePlay={togglePlay}
               onSetRate={setReplayRate}
               onLive={goLive}
-              onClose={closeReplay}
               onScrubState={setScrubbing}
             />
           )}

@@ -143,6 +143,7 @@ export function ReplayBar({
     onSeek?.(c, { transient: false });
   };
 
+  const nubs = nubsFor(events);
   const mode = replay?.mode === 'at' ? 'at' : 'edge';
   const valuetext = `${readout.clock} · ${readout.step} / ${readout.total}`;
   // Pad the step readout to its widest possible string so the digits do not
@@ -227,6 +228,21 @@ export function ReplayBar({
           tabIndex={-1}
         />
         <div class="played" style={{ width: `${pct}%` }} />
+        {/* Nubs: one per step the playhead can stop at, so you can see where
+            a click lands. A click on the scrub already snaps to the nearest
+            step, so the nubs need no handlers of their own. Taller nubs mark
+            the moments a node appears. */}
+        <div class="nubs" aria-hidden="true">
+          {nubs.map((n) => (
+            <span
+              key={n.c}
+              class="nub"
+              data-kind={n.kind}
+              data-past={String(n.c <= at)}
+              style={{ left: `${total > 0 ? (n.c / total) * 100 : 0}%` }}
+            />
+          ))}
+        </div>
         {/* Markers are placed by position only — a few absolutely placed
             buttons, never one DOM node per event. A press on a marker stops
             at the marker: if it reached the scrub, capture would retarget
@@ -290,6 +306,7 @@ export function ReplayBar({
           left a phone visitor with no way to close it at all — and "r
           replay" in a caption never said that r also closes. The key hint
           rides on the button; a phone has no keys, so CSS drops it there. */}
+      {onClose && (
       <button
         class="ghost close"
         disabled={off}
@@ -299,8 +316,26 @@ export function ReplayBar({
       >
         × close<span class="key" aria-hidden="true">r</span>
       </button>
+      )}
     </div>
   );
+}
+
+/** Most nubs drawn on the bar; past that they would merge into a solid line. */
+const MAX_NUBS = 200;
+
+/**
+ * Where to draw nubs: the cursor value after each event (1…n), so a nub sits
+ * exactly where a click snaps to. On a long run, only the moments a node
+ * appears are kept, then thinned evenly to MAX_NUBS.
+ */
+export function nubsFor(events) {
+  const all = (Array.isArray(events) ? events : []).map((e, i) => ({ c: i + 1, kind: e?.kind === 'start' ? 'start' : 'step' }));
+  if (all.length <= MAX_NUBS) return all;
+  const starts = all.filter((n) => n.kind === 'start');
+  if (starts.length <= MAX_NUBS) return starts;
+  const every = Math.ceil(starts.length / MAX_NUBS);
+  return starts.filter((_, i) => i % every === 0);
 }
 
 function clamp(v, lo, hi) {
