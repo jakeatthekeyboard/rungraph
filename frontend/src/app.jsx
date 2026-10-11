@@ -976,7 +976,7 @@ export function App() {
           aria-label="toggle the runs list"
           aria-pressed={String(panes.left)}
         >
-          ▤
+          <PanelIcon side="left" open={panes.left} />
         </button>
         <span class="brand"><b>run</b>graph</span>
         <span class="run-title">
@@ -1070,7 +1070,7 @@ export function App() {
             aria-label="toggle the run details pane"
             aria-pressed={String(panes.right)}
           >
-            ▥
+            <PanelIcon side="right" open={panes.right} />
           </button>
         )}
       </header>
@@ -1645,4 +1645,17 @@ function timeAgo(iso) {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
+}
+
+// Sidebar glyph: a window outline split by a divider, the pane's side filled
+// while it is open. Replaces ▤/▥, which rendered as a solid "stop" square.
+function PanelIcon({ side, open }) {
+  const x = side === 'left' ? 2 : 10;
+  return (
+    <svg class="panel-icon" width="15" height="13" viewBox="0 0 15 13" aria-hidden="true">
+      {open && <rect class="fill" x={x + 0.5} y="1.5" width="3" height="10" />}
+      <rect class="frame" x="0.75" y="0.75" width="13.5" height="11.5" rx="2.25" />
+      <line class="frame" x1={side === 'left' ? 5.25 : 9.75} y1="1" x2={side === 'left' ? 5.25 : 9.75} y2="12" />
+    </svg>
+  );
 }

@@ -164,6 +164,9 @@ body {
   border: none;
   cursor: pointer;
 }
+.panel-icon { display: block; }
+.panel-icon .frame { fill: none; stroke: currentColor; stroke-width: 1.3; }
+.panel-icon .fill { fill: currentColor; opacity: 0.55; }
 .theme-toggle { flex: none; padding: 2px 8px; font-size: 13px; line-height: 1; }
 .header .run-title .copy-title:hover { color: var(--ink); }
 
@@ -237,6 +240,8 @@ button.ghost[data-on="true"] {
 
 .pane-toggle {
   flex: none;
+  display: inline-flex;
+  align-items: center;
   padding: 3px 8px;
   line-height: 1;
 }
