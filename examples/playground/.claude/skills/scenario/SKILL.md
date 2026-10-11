@@ -18,6 +18,8 @@ Build it from these pieces only.
 | tone-critic, facts-critic, length-critic | Each reviews one aspect of a blurb |
 | editor | Applies notes and saves `out/blurb-final.md` |
 
+If `.claude/agents/` holds other agents, read their descriptions and use them too.
+
 **Tools** (in `tools/`): `word-count.sh`, `check-fridge.sh` (fails until fixed), `print-sign.sh` (always fails).
 
 **Patterns:**

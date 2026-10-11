@@ -286,6 +286,51 @@ runs; without it, you see runs from every project on your machine.
 costs a few cents. `/playground-guide` walks through all of it;
 [SCENARIOS.md](examples/playground/SCENARIOS.md) has prompts to paste.
 
+### Create your own flows
+
+Describe the flow you want after `/scenario`, in plain English. Claude plans
+it from the playground's agents, tells you the plan in one line, runs it, and
+the graph grows in the dashboard as it goes.
+
+Build a description from these pieces:
+
+| You want | Say something like | Graph shape |
+|---|---|---|
+| Steps in order | "researcher, then writer, then judge" | a straight line |
+| Work in parallel | "three writers in parallel" | side-by-side lanes |
+| Combine results | "…then the judge picks the best" | lanes joining into one node |
+| Repeat until good | "writer and judge in a loop until PASS" | a repeating pair |
+| Ask you mid-run | "ask me which flavour first" | a question node |
+| Hit a failure | "print a sign, then carry on anyway" | an error node |
+
+The building blocks:
+
+- **Agents:** `writer`, `judge`, `researcher`, `tone-critic`,
+  `facts-critic`, `length-critic`, `editor`.
+- **Tools:** `word-count.sh`, `check-fridge.sh` (fails until fixed),
+  `print-sign.sh` (always fails).
+
+Examples to start from:
+
+```
+/scenario three writers in parallel (funny, short, fancy), then the judge picks the best
+/scenario ask me which flavour to feature, then writer and judge loop until PASS
+/scenario researcher, then writer, then all three critics in parallel, then editor
+```
+
+Loops stop after 3 rounds, and a scenario uses at most 8 agent calls unless
+you ask for more.
+
+**Add your own pieces.** Every agent and command is a short Markdown file.
+Copy one and edit it:
+
+- New agent: copy `.claude/agents/judge.md`, change `name`, `description`
+  and the instructions. `/scenario` can use it too.
+- New repeatable flow: copy a file in `.claude/commands/`. The file name
+  becomes the slash command, so `my-flow.md` is `/my-flow`.
+
+Restart Claude after adding files so it picks them up.
+
 ## Roadmap
 
 - **Annotations** — mark nodes before exporting a bundle.
