@@ -8,7 +8,7 @@ Paste any of these after `/scenario`.
 
 ## Parallel
 - three writers in parallel, each in a different style (funny, short, fancy), then the judge picks the best
-- all three critics review out/blurb.md at the same time
+- write a blurb, then all three critics review it at the same time
 
 ## Sequential
 - researcher, then writer, then facts-critic, then editor

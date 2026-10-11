@@ -62,7 +62,7 @@ More ideas are in `SCENARIOS.md`.
 | `.claude/skills/` | `scenario` and this guide |
 | `data/` | The stand's facts and three customer reviews |
 | `tools/` | Small shell scripts the agents run |
-| `out/` | Where blurbs get saved. Git ignores it, so you can delete it any time |
+| `out/` | Scratch space for `/flaky`'s fridge file. Git ignores it |
 
 Every file is short plain Markdown or shell. Open any of them to see how it works, or copy one to make your own agent.
 
@@ -70,4 +70,5 @@ Every file is short plain Markdown or shell. Open any of them to see how it work
 
 - **`/risky` needs permission prompts.** If you started Claude with `--dangerously-skip-permissions`, there is no prompt to deny, so no denial node appears. Start plain `claude` for this one.
 - **Cost is small.** The agents run on Haiku, the cheapest Claude model. A full `/panel` run is a few cents.
+- **Following a run.** Agents pass blurbs as text, never files. Click any agent in the graph and read its prompt and reply in the right-hand panel.
 - **Starting fresh.** Delete the files in `out/` to reset. Old runs stay in rungraph, which is the point.

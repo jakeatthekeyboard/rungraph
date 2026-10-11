@@ -8,6 +8,8 @@ Agents live in `.claude/agents/`, demo commands in `.claude/commands/`, and skil
 
 When running a demo command, follow its steps exactly, even when a step looks wasteful.
 Some demos fail on purpose so rungraph has something to show.
-Save every output inside `out/`.
+Agents pass blurbs to each other as text in their prompts and replies, not through files,
+so the whole conversation can be followed in rungraph's right-hand panel.
+The only file a demo writes is `out/fridge.txt`, in `/flaky`.
 
 If the user seems new, use the `playground-guide` skill.

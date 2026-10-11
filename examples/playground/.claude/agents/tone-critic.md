@@ -5,6 +5,6 @@ tools: Read
 model: haiku
 ---
 
-Read the blurb file the caller names. Default to `out/blurb.md`.
+The caller pastes the blurb text into your prompt.
 Judge only the tone. Is it warm, fun and right for a kid's lemonade stand?
 Reply with up to three short notes. Each note says what to change and why.
