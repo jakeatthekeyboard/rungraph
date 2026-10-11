@@ -617,33 +617,37 @@ function NodeDetail({
 
 /**
  * The node as rungraph holds it: the graph node, the edges that touch it,
- * and the fetched detail (prompt, result, transcript, calls). Collapsed by
- * default; the open/closed choice carries across node changes.
+ * and the fetched detail (prompt, result, transcript, calls), or null while
+ * it loads. "view JSON" opens it in a new browser tab as a JSON blob, so the
+ * browser's own viewer shows it at full width.
  */
 function NodeJson({ graph, node, detail }) {
-  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const text = useMemo(() => {
-    if (!open) return '';
+  const text = () => {
     const edges = graph.edges.filter((e) => e.from === node.id || e.to === node.id);
     return JSON.stringify({ node, edges, detail: detail ?? null }, null, 2);
-  }, [open, graph, node, detail]);
+  };
+  // A real link, not window.open: the href is set to a fresh blob during
+  // the click, before the browser follows it, so it is never popup-blocked.
+  const view = (e) => {
+    const url = URL.createObjectURL(new Blob([text()], { type: 'application/json' }));
+    e.currentTarget.href = url;
+    // The new tab has its own copy once loaded; free the blob after that.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
   const copy = () =>
-    navigator.clipboard?.writeText(text).then(() => {
+    navigator.clipboard?.writeText(text()).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
     });
   return (
     <div class="node-json">
       <div class="node-json-bar">
-        <button class="ghost" onClick={() => setOpen((o) => !o)} aria-expanded={String(open)}>
-          {open ? 'hide JSON' : 'view JSON'}
-        </button>
-        {open && (
-          <button class="ghost" onClick={copy}>{copied ? 'copied' : 'copy'}</button>
-        )}
+        <a class="ghost" href="#" target="_blank" onClick={view} title="open this node's JSON in a new tab">
+          view JSON ↗
+        </a>
+        <button class="ghost" onClick={copy}>{copied ? 'copied' : 'copy JSON'}</button>
       </div>
-      {open && <pre class="json">{text}</pre>}
     </div>
   );
 }

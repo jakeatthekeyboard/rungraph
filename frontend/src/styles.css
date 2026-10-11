@@ -256,7 +256,8 @@ body {
   100% { box-shadow: 0 0 0 7px transparent; }
 }
 
-button.ghost {
+button.ghost,
+a.ghost {
   font: inherit;
   font-family: var(--mono);
   font-size: var(--fs-md);
@@ -268,7 +269,8 @@ button.ghost {
   cursor: pointer;
   transition: color 120ms ease-out, border-color 120ms ease-out, background 120ms ease-out;
 }
-button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
+button.ghost:hover,
+a.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 button.ghost[data-on="true"] {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 50%, transparent);
@@ -942,7 +944,6 @@ button.ghost[data-on="true"] {
 .tool-call .head .err { color: var(--clay); }
 .inspector .node-json { margin-top: 10px; }
 .inspector .node-json-bar { display: flex; gap: 6px; }
-.inspector pre.json { margin-top: 6px; max-height: 60vh; }
 .inspector pre.error-text { color: var(--clay); border-color: var(--clay-dim); }
 .tool-call .head .ok { color: var(--sage); }
 .inspector .loading { color: var(--ink-faint); font-family: var(--mono); padding: 14px 0; }
