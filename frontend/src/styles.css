@@ -1360,6 +1360,27 @@ button.ghost[data-on="true"] {
 }
 .replay-bar .nub[data-kind="start"] { height: 10px; margin-top: -5px; background: var(--ink-dim); }
 .replay-bar .nub[data-past="true"] { background: color-mix(in oklch, var(--amber) 70%, var(--ink-faint)); }
+/* Step numbers: pills like the canvas's edge numbers, centred on their nub. */
+.replay-bar .num {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  font: inherit;
+  font-size: 8.5px;
+  line-height: 11px;
+  color: var(--ink-dim);
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: 6.5px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.replay-bar .num:hover { color: var(--ink); border-color: var(--ink-faint); }
+.replay-bar .num[data-past="true"] { border-color: color-mix(in oklch, var(--amber) 60%, transparent); }
+.replay-bar .num[data-here="true"] { color: var(--bg); background: var(--amber); border-color: var(--amber); }
 .replay-bar .playhead {
   position: absolute;
   top: 0;

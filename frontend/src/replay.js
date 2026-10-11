@@ -341,3 +341,53 @@ export function rateLabel(sched, rate) {
   const r = typeof rate === 'number' && Number.isFinite(rate) && rate > 0 ? rate : 1;
   return `${Math.round(base * r)}×`;
 }
+
+// ------------------------------------------------------------ track marks
+
+/** Most nubs drawn on the bar; past that they would merge into a solid line. */
+const MAX_NUBS = 200;
+
+/**
+ * Where to draw nubs: the cursor value after each event (1…n), so a nub sits
+ * exactly where a click snaps to. On a long run, only the moments a node
+ * appears are kept, then thinned evenly to MAX_NUBS.
+ */
+export function nubsFor(events) {
+  const all = (Array.isArray(events) ? events : []).map((e, i) => ({ c: i + 1, kind: e?.kind === 'start' ? 'start' : 'step' }));
+  if (all.length <= MAX_NUBS) return all;
+  const starts = all.filter((n) => n.kind === 'start');
+  if (starts.length <= MAX_NUBS) return starts;
+  const every = Math.ceil(starts.length / MAX_NUBS);
+  return starts.filter((_, i) => i % every === 0);
+}
+
+/** Px a step-number pill needs so its neighbour does not overlap it. */
+const LABEL_GAP_PX = 18;
+
+/**
+ * Group the step numbers by cursor (several edges can appear in one step;
+ * the pill shows the first, the tooltip lists all), drop any at cursor 0
+ * (present before the first step), then keep a pill only if it sits at least
+ * LABEL_GAP_PX right of the last one kept, so they never overlap. A dropped
+ * number is still one click away: its nub stays, and the scrub snaps to it.
+ */
+export function labelsFor(numbers, total, trackPx) {
+  const byCursor = new Map();
+  for (const s of Array.isArray(numbers) ? numbers : []) {
+    if (!s || !(s.cursor > 0) || s.cursor > total) continue;
+    if (!byCursor.has(s.cursor)) byCursor.set(s.cursor, []);
+    byCursor.get(s.cursor).push(s.n);
+  }
+  const all = [...byCursor].map(([cursor, ns]) => ({ cursor, ns: ns.sort((a, b) => a - b) }));
+  all.sort((a, b) => a.cursor - b.cursor);
+  if (!(trackPx > 0) || !(total > 0)) return all;
+  const out = [];
+  let lastX = -Infinity;
+  for (const l of all) {
+    const x = (l.cursor / total) * trackPx;
+    if (x - lastX < LABEL_GAP_PX) continue;
+    out.push(l);
+    lastX = x;
+  }
+  return out;
+}

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'preact/hooks';
-import { fmtClock, nextRate, rateLabel, readoutFor } from './replay.js';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { fmtClock, labelsFor, nextRate, nubsFor, rateLabel, readoutFor } from './replay.js';
 
 /**
  * The replay bar: "when", one line, along the BOTTOM of the centre column.
@@ -49,6 +49,7 @@ export function ReplayBar({
   live,
   disabled,
   markers,
+  numbers,
   onSeek,
   onStep,
   onToStart,
@@ -143,7 +144,20 @@ export function ReplayBar({
     onSeek?.(c, { transient: false });
   };
 
+  // The track's width in px, so step numbers can be spaced to never overlap.
+  const [trackPx, setTrackPx] = useState(0);
+  useEffect(() => {
+    const el = scrubRef.current;
+    if (!el) return;
+    const measure = () => setTrackPx(el.getBoundingClientRect().width || 0);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const nubs = nubsFor(events);
+  const labels = labelsFor(numbers, total, trackPx);
   const mode = replay?.mode === 'at' ? 'at' : 'edge';
   const valuetext = `${readout.clock} · ${readout.step} / ${readout.total}`;
   // Pad the step readout to its widest possible string so the digits do not
@@ -266,6 +280,27 @@ export function ReplayBar({
             {m.glyph}
           </button>
         ))}
+        {/* Step numbers: the same numbers the canvas shows on edges and node
+            headings, at the step where each appears. A click jumps there. */}
+        {labels.map((l) => (
+          <button
+            key={l.cursor}
+            class="num"
+            data-past={String(l.cursor <= at)}
+            data-here={String(l.cursor === at)}
+            disabled={off}
+            style={{ left: `${total > 0 ? (l.cursor / total) * 100 : 0}%` }}
+            title={`jump to ${l.ns.join(', ')}`}
+            aria-label={`jump to step ${l.ns.join(', ')}`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSeek?.(l.cursor, { transient: false });
+            }}
+          >
+            {l.ns[0]}
+          </button>
+        ))}
         <div class="playhead" style={{ left: `${pct}%` }} />
       </div>
 
@@ -319,23 +354,6 @@ export function ReplayBar({
       )}
     </div>
   );
-}
-
-/** Most nubs drawn on the bar; past that they would merge into a solid line. */
-const MAX_NUBS = 200;
-
-/**
- * Where to draw nubs: the cursor value after each event (1…n), so a nub sits
- * exactly where a click snaps to. On a long run, only the moments a node
- * appears are kept, then thinned evenly to MAX_NUBS.
- */
-export function nubsFor(events) {
-  const all = (Array.isArray(events) ? events : []).map((e, i) => ({ c: i + 1, kind: e?.kind === 'start' ? 'start' : 'step' }));
-  if (all.length <= MAX_NUBS) return all;
-  const starts = all.filter((n) => n.kind === 'start');
-  if (starts.length <= MAX_NUBS) return starts;
-  const every = Math.ceil(starts.length / MAX_NUBS);
-  return starts.filter((_, i) => i % every === 0);
 }
 
 function clamp(v, lo, hi) {

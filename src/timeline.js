@@ -589,24 +589,42 @@ export function tickAfter(sched, cursor, rate = 1) {
  */
 export function edgeOrder(nodes, edges) {
   const out = new Map();
-  if (!Array.isArray(edges)) return out;
+  for (const step of edgeSteps(nodes, edges)) out.set(step.id, step.n);
+  return out;
+}
+
+/**
+ * Every numbered edge with the replay cursor at which it appears:
+ * [{ id, n, cursor }] in number order. `cursor` is what `stateAt` needs to
+ * show the edge for the first time (an edge whose ends are never in the
+ * timeline is present from cursor 0). The replay bar labels its track with
+ * these, so a click on a number lands on the frame where that number's edge,
+ * and the node it brought in, first appear. Never throws.
+ *
+ * @param {Array} nodes
+ * @param {Array} edges
+ * @returns {{ id: string, n: number, cursor: number }[]}
+ */
+export function edgeSteps(nodes, edges) {
+  if (!Array.isArray(edges)) return [];
   const list = Array.isArray(nodes) ? nodes : [];
   const ids = new Set(list.filter((n) => n && typeof n.id === 'string').map((n) => n.id));
   const byNode = indexEvents(buildTimeline({ nodes: list, edges })).byNode;
   // A node the timeline never saw is present from the start, as in stateAt.
   const startOf = (id) => byNode.get(id)?.startIdx ?? -1;
   const ranked = [];
+  const seen = new Set();
   edges.forEach((e, i) => {
-    if (!e || typeof e !== 'object' || typeof e.id !== 'string') return;
+    if (!e || typeof e !== 'object' || typeof e.id !== 'string' || seen.has(e.id)) return;
     if (!ids.has(e.from) || !ids.has(e.to)) return;
+    seen.add(e.id);
     const both = Math.max(startOf(e.from), startOf(e.to));
     const child = byNode.get(e.from);
     const at = e.kind === 'return' && child && child.endIdx !== null ? child.endIdx : both;
     ranked.push({ id: e.id, at, i });
   });
   ranked.sort((a, b) => a.at - b.at || a.i - b.i);
-  for (const r of ranked) if (!out.has(r.id)) out.set(r.id, out.size + 1);
-  return out;
+  return ranked.map((r, k) => ({ id: r.id, n: k + 1, cursor: r.at + 1 }));
 }
 
 /**

@@ -40,7 +40,7 @@ import {
   strongerCoverage,
   unknownTypeSummary,
 } from '../../src/coverage.js';
-import { stateAt, timeAtCursor } from '../../src/timeline.js';
+import { edgeSteps, stateAt, timeAtCursor } from '../../src/timeline.js';
 
 // One shared empty list for "nothing yet" (no timeline, no signals), so the
 // memos keyed on it see one identity from render to render, not a fresh `[]`.
@@ -314,6 +314,12 @@ export function App() {
   // changes every tick), and not built at all while it is closed: the closed
   // path does no replay work beyond the timeline the header button needs.
   const replayOpen = replay !== null;
+  // The numbers the canvas draws on edges and node headings, placed on the
+  // bar's track at the step where each one appears — click one to jump there.
+  const stepNumbers = useMemo(
+    () => (replayOpen && replayAvailable && graph ? edgeSteps(graph.nodes, graph.edges) : EMPTY),
+    [graph, replayOpen, replayAvailable],
+  );
   const markers = useMemo(
     () => (replayOpen && replayAvailable ? markersFor(graph, timeline.index, SIGNAL_GLYPHS) : EMPTY),
     [graph, timeline, replayOpen, replayAvailable],
@@ -1172,6 +1178,7 @@ export function App() {
               live={live}
               disabled={layoutStale}
               markers={markers}
+              numbers={stepNumbers}
               onSeek={seekReplay}
               onStep={stepReplay}
               onToStart={() => seekReplay(0)}

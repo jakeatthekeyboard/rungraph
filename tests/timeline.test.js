@@ -16,6 +16,7 @@ import {
   tickAfter,
   validCallOffsets,
   edgeOrder,
+  edgeSteps,
   nodeOrder,
 } from '../src/timeline.js';
 import {
@@ -860,6 +861,17 @@ describe('edgeOrder numbers edges in the order replay draws them', () => {
     }
     const order = edgeOrder(nodes, edges);
     expect(seen.map((id) => order.get(id))).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('gives each number the replay cursor where its edge first appears', () => {
+    const ir = { nodes, edges };
+    const events = buildTimeline(ir);
+    const index = indexEvents(events);
+    for (const step of edgeSteps(nodes, edges)) {
+      expect(stateAt(ir, events, step.cursor, index).edgePresent.has(step.id)).toBe(true);
+      expect(stateAt(ir, events, step.cursor - 1, index).edgePresent.has(step.id)).toBe(false);
+    }
+    expect(edgeSteps(nodes, edges).map((s) => s.n)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   it('gives each node the number of the edge that brought it in', () => {

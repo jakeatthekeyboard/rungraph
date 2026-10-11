@@ -24,6 +24,8 @@ import {
   RATES,
   rateLabel,
   nextRate,
+  nubsFor,
+  labelsFor,
 } from '../frontend/src/replay.js';
 import { pinFixtureMtimes, FIXTURE_ROOT, SESSION_RUN_ID, TROUBLE_RUN_ID, CLEAN_RUN_ID } from './helpers.js';
 
@@ -560,5 +562,55 @@ describe('purity contract', () => {
     const imports = [...code.matchAll(/^\s*import[\s\S]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);
     expect(imports).toEqual(['../../src/timeline.js']);
     expect(code).not.toMatch(/require\(|['"]node:|process\.|document\.|window\./);
+  });
+});
+
+describe('timeline track marks', () => {
+  const ev = (kinds) => kinds.map((kind, i) => ({ t: i, nodeId: `n${i}`, kind }));
+
+  it('puts a nub at every step a click can land on, tall ones where a node appears', () => {
+    const nubs = nubsFor(ev(['start', 'start', 'end', 'start']));
+    expect(nubs).toEqual([
+      { c: 1, kind: 'start' },
+      { c: 2, kind: 'start' },
+      { c: 3, kind: 'step' },
+      { c: 4, kind: 'start' },
+    ]);
+  });
+
+  it('keeps only node appearances on long runs, thinned to at most 200', () => {
+    const long = ev(Array.from({ length: 1000 }, (_, i) => (i % 2 ? 'end' : 'start')));
+    const nubs = nubsFor(long);
+    expect(nubs.length).toBeLessThanOrEqual(200);
+    expect(nubs.every((n) => n.kind === 'start')).toBe(true);
+    expect(nubsFor(null)).toEqual([]);
+  });
+
+  const numbers = Array.from({ length: 14 }, (_, i) => ({ id: `e${i}`, n: i + 1, cursor: i + 2 }));
+
+  it('labels every number when the track is wide enough', () => {
+    const labels = labelsFor(numbers, 16, 578);
+    expect(labels.map((l) => l.ns[0])).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+  });
+
+  it('drops numbers that would overlap on a narrow track, never overlapping', () => {
+    const labels = labelsFor(numbers, 16, 160);
+    const xs = labels.map((l) => (l.cursor / 16) * 160);
+    expect(labels.length).toBeLessThan(14);
+    expect(labels[0].ns[0]).toBe(1);
+    for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeGreaterThanOrEqual(18);
+  });
+
+  it('groups numbers that appear in the same step, and skips step 0', () => {
+    const labels = labelsFor(
+      [
+        { id: 'a', n: 2, cursor: 3 },
+        { id: 'b', n: 1, cursor: 3 },
+        { id: 'c', n: 3, cursor: 0 },
+      ],
+      5,
+      500,
+    );
+    expect(labels).toEqual([{ cursor: 3, ns: [1, 2] }]);
   });
 });
