@@ -267,8 +267,11 @@ claude
 ```
 
 On Windows, double-click `Start-Rungraph.cmd` in the repo root instead of
-terminal 1. It installs dependencies on first run, builds, and starts the
-dashboard with every project's runs; close its window to stop it.
+terminal 1. On first run it installs only the three packages the build
+needs (esbuild, preact, elkjs) from whatever registry npm is set up for, so
+it works behind a company package mirror that lacks the test tools. It then
+builds and starts the dashboard with every project's runs; close its window
+to stop it. Run `npm install` as well if you want to run the tests.
 
 The dashboard opens at http://127.0.0.1:4321. If it is already running,
 just open that address. `--project examples/playground` shows only playground

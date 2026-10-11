@@ -1,6 +1,6 @@
 @echo off
-rem Double-click to run rungraph on Windows: installs dependencies the
-rem first time, builds the dashboard, starts the server and opens the
+rem Double-click to run rungraph on Windows: installs what the build needs
+rem the first time, builds the dashboard, starts the server and opens the
 rem browser. Close this window (or press Ctrl+C) to stop it.
 setlocal
 title rungraph
@@ -12,12 +12,23 @@ if errorlevel 1 (
   goto :fail
 )
 
-if not exist "node_modules\" (
-  echo Installing dependencies, first run only...
-  call npm install
-  if errorlevel 1 goto :fail
-)
+rem Running rungraph needs only the three packages that build the dashboard.
+rem A plain "npm install" also fetches the test tools (vitest and its
+rem dependencies), which some company package mirrors do not carry. So the
+rem three are installed into a scratch folder that has no package.json,
+rem using whatever registry npm is set up for, and moved into node_modules.
+rem Keep the versions in step with devDependencies in package.json.
+if exist "node_modules\.rungraph-build-deps" goto :build
+echo Installing the build packages, first run only...
+if exist ".build-deps\" rmdir /s /q ".build-deps"
+call npm install --prefix .build-deps --no-save --no-package-lock --no-audit --no-fund "esbuild@^0.24.0" "preact@^10.24.0" "elkjs@^0.9.3"
+if errorlevel 1 goto :fail
+robocopy ".build-deps\node_modules" "node_modules" /e /move /nfl /ndl /njh /njs /np >nul
+if errorlevel 8 goto :fail
+rmdir /s /q ".build-deps" 2>nul
+echo installed> "node_modules\.rungraph-build-deps"
 
+:build
 echo Building the dashboard...
 call npm run build
 if errorlevel 1 goto :fail
