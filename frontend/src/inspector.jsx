@@ -5,6 +5,9 @@ import { SIGNAL_GLYPHS } from './strip.jsx';
 import { adapterName, compactPath, filesIndex, rankedFocusNodes, relPath, signalsForNode } from './focus.js';
 import { firstFutureCall } from './replay.js';
 import { suggestQuestions } from './suggest.js';
+import { inspectorWidth, restoreInspectorWidth, setInspectorWidth } from './panel-width.js';
+
+if (typeof window !== 'undefined') restoreInspectorWidth();
 import { coverageStats, unknownTypeSummary } from '../../src/coverage.js';
 
 /**
@@ -39,6 +42,7 @@ export function Inspector({
   const open = Boolean(graph) && paneOpen;
   return (
     <aside class="inspector" data-open={String(open)}>
+      {open && <ResizeHandle />}
       {open && (
         <div class="inspector-inner">
           {selection && <button class="ghost close" onClick={onClose}>close</button>}
@@ -763,4 +767,47 @@ function fmtTime(iso) {
     minute: '2-digit',
     second: '2-digit',
   });
+}
+
+/**
+ * The drag handle on the panel's left edge. Dragging left widens the panel,
+ * right narrows it; double-click restores the default width. The panel is the
+ * rightmost column, so its width is simply the distance from the pointer to
+ * the window's right edge (offset by where on the handle the drag began).
+ */
+function ResizeHandle() {
+  const drag = useRef(null);
+  const onPointerDown = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    drag.current = { startX: e.clientX, startW: inspectorWidth() };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    document.documentElement.dataset.resizing = 'inspector';
+  };
+  const onPointerMove = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    setInspectorWidth(d.startW + (d.startX - e.clientX));
+  };
+  const end = () => {
+    if (!drag.current) return;
+    drag.current = null;
+    delete document.documentElement.dataset.resizing;
+    window.dispatchEvent(new Event('resize')); // let canvas observers settle
+  };
+  return (
+    <div
+      class="inspector-resize"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="resize the panel"
+      title="drag to resize · double-click to reset"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onLostPointerCapture={end}
+      onDblClick={() => setInspectorWidth(null)}
+    />
+  );
 }

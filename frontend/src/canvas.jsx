@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 // preact/compat is inside the preact package already — no new dependency.
 import { memo } from 'preact/compat';
 import { layoutGraph, edgePath } from './layout.js';
+import { inspectorWidth } from './panel-width.js';
 import { badgedNodeIds, nodeMarks } from './focus.js';
 import { replayLabel } from './replay.js';
 import { runOrder, edgeOrder, nodeOrder } from '../../src/timeline.js';
@@ -216,7 +217,7 @@ export function Canvas({
     const open = Boolean(inspectorOpen);
     if (open === prevInspectorOpen.current) return;
     prevInspectorOpen.current = open;
-    const w = Math.min(384, window.innerWidth * 0.3); // == --inspector-w in styles.css
+    const w = inspectorWidth(); // the dragged width, or the styles.css default
     setView((v) => ({ ...v, tx: v.tx + (open ? -w / 2 : w / 2) }));
   }, [inspectorOpen]);
 

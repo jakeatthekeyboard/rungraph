@@ -731,6 +731,7 @@ button.ghost[data-on="true"] {
 
 /* ---------- inspector ---------- */
 .inspector {
+  position: relative;
   width: 0;
   overflow: hidden;
   border-left: 1px solid transparent;
@@ -741,6 +742,25 @@ button.ghost[data-on="true"] {
   width: var(--inspector-w);
   border-left-color: var(--hairline-soft);
 }
+/* Drag handle on the panel's left edge: invisible until hovered or dragged. */
+.inspector-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+  transition: background 120ms ease-out;
+}
+.inspector-resize:hover,
+:root[data-resizing="inspector"] .inspector-resize { background: color-mix(in oklch, var(--amber) 45%, transparent); }
+/* While dragging: no width animation (it would lag the pointer), no text
+   selection, and the resize cursor everywhere. */
+:root[data-resizing="inspector"] .inspector,
+:root[data-resizing="inspector"] .main { transition: none; }
+:root[data-resizing="inspector"] { cursor: col-resize; user-select: none; -webkit-user-select: none; }
 .inspector-inner {
   width: var(--inspector-w);
   height: 100%;
@@ -1492,6 +1512,7 @@ button.ghost[data-on="true"] {
 /* Narrow: the readout drops to the time alone and the rate toggle hides; the
    controls and the scrubber stay. The bar still stacks — it never overlays. */
 @media (max-width: 700px) {
+  .inspector-resize { display: none; }
   .replay-bar .step,
   .replay-bar .rate { display: none; }
   /* No keyboard on a phone: the × stays, its key hint goes. */
