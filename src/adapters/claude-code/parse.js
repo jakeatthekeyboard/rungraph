@@ -394,6 +394,10 @@ class GraphBuilder {
       if (spawn) {
         spawn.result = tur && typeof tur === 'object' && !Array.isArray(tur) ? tur : null;
         spawn.resultTurnId = this.turn?.id ?? spawn.fromNodeId;
+        // Refused before it ran (e.g. the concurrent-subagent limit): keep why.
+        if (tr.is_error === true) {
+          spawn.errorText = (contentText(tr.content) || (typeof tur === 'string' ? tur : '')).trim() || null;
+        }
       }
       return;
     }
@@ -797,7 +801,10 @@ async function materializeAgent(spawn, ctx) {
   let returnTurnId = spawn.resultTurnId;
   let terminal = null; // 'completed' | 'error' — only with actual evidence
 
-  if (syncDone) {
+  if (spawn.errorText) {
+    terminal = 'error';
+    detail.error = cap(spawn.errorText, 2000);
+  } else if (syncDone) {
     terminal = 'completed';
     node.durationMs = spawn.result.totalDurationMs;
     if (spawn.result.usage) {
@@ -813,6 +820,7 @@ async function materializeAgent(spawn, ctx) {
     resultText = notif.result ?? null;
     if (notif.status === 'killed' || notif.status === 'failed') {
       detail.result = notif.summary ?? null;
+      detail.error = `Agent ${notif.status}${notif.summary ? `: ${notif.summary}` : ''}`;
     }
   }
 
@@ -829,6 +837,7 @@ async function materializeAgent(spawn, ctx) {
     // A subagent's tool calls never become tool nodes, so without this the
     // files lane would silently miss everything edited inside subagents.
     if (parsed.files.length) node.files = parsed.files;
+    if (terminal == null && parsed.terminal === 'error') detail.error = parsed.errorReason;
     terminal ??= parsed.terminal;
     detail.transcript = parsed.transcript;
     resultText ??= parsed.finalText;
@@ -854,6 +863,11 @@ async function materializeAgent(spawn, ctx) {
   // session with an unresolved agent is an error, but with no phantom
   // "failed" return edge (we don't actually know how it ended).
   node.status = terminal ?? (live ? 'running' : 'error');
+  if (node.status === 'error' && !detail.error) {
+    detail.error = st
+      ? 'The session ended before this agent sent a final reply'
+      : 'No transcript was found for this agent';
+  }
 
   if (resultText) detail.result = cap(resultText, 8000);
   if (terminal) {

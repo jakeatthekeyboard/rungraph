@@ -635,6 +635,12 @@ function DetailBody({ detail, futureFrom = Infinity }) {
     case 'agent':
       return (
         <>
+          {detail.error && (
+            <>
+              <div class="microlabel section-label">error</div>
+              <pre class="error-text">{detail.error}</pre>
+            </>
+          )}
           <div class="microlabel section-label">prompt given</div>
           <pre>{detail.prompt || '(unknown)'}</pre>
           {detail.result != null && (

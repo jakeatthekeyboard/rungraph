@@ -528,6 +528,8 @@ describe('agents that call agents', () => {
     const child = [
       { ...lines[0], agentId: CHILD, uuid: 'c-1', parentUuid: null, timestamp: at(11), message: { role: 'user', content: 'Confirm the redirect race.' } },
       { ...last, agentId: CHILD, uuid: 'c-2', parentUuid: 'c-1', timestamp: at(19) },
+      // Claude Code writes this after the final reply; it must not hide the ending.
+      { type: 'attachment', agentId: CHILD, uuid: 'c-3', parentUuid: 'c-2', timestamp: at(19), attachment: { type: 'prompt_snapshot', systemPrompt: ['…'] } },
     ];
     await writeFile(join(sub, `agent-${CHILD}.jsonl`), child.map((l) => JSON.stringify(l)).join('\n') + '\n');
     await writeFile(
@@ -553,7 +555,7 @@ describe('agents that call agents', () => {
     expect(child.kind).toBe('agent');
     expect(child.label).toBe('Check redirect race');
     expect(child.agentId).toBe(CHILD); // linked through its .meta.json
-    expect(child.status).toBe('completed');
+    expect(child.status).toBe('completed'); // despite the trailing prompt_snapshot
   });
 
   it('links it with a spawn from the parent agent and a return back to it', () => {
@@ -565,5 +567,59 @@ describe('agents that call agents', () => {
   it('skips a nested call that errored, and still reads every line', () => {
     expect(ir.nodes.some((n) => n.id === 'a:toolu_fxN002')).toBe(false);
     expect(ir.meta.coverage.sourcesUnread).toBe(0);
+  });
+});
+
+describe('an agent call Claude Code refused', () => {
+  // A copy of the fixture session with one extra Agent call that came back
+  // as an error before any agent ran (the concurrent-subagent limit).
+  const LIMIT = 'Concurrent subagent limit reached. You can run 20 subagents at once. Do not retry.';
+  let ir, details;
+  beforeAll(async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rg-refused-'));
+    await cp(FIXTURE_ROOT, dir, { recursive: true });
+    const main = join(dir, '-home-dev-acme', '11111111-1111-4111-8111-111111111111.jsonl');
+    const lines = (await readFile(main, 'utf8')).trim().split('\n').map((l) => JSON.parse(l));
+    const callAt = lines.findIndex((l) => JSON.stringify(l).includes('"id":"toolu_fxA001"'));
+    const call = lines[callAt];
+    const res = lines[callAt + 1];
+    const id = 'toolu_fxR001';
+    lines.splice(
+      callAt + 2,
+      0,
+      {
+        ...call,
+        uuid: 'u-refused',
+        message: { ...call.message, id: 'msg-refused', content: [{ type: 'tool_use', id, name: 'Agent', input: { description: 'Over the limit', prompt: 'never runs' } }] },
+      },
+      {
+        ...res,
+        uuid: 'r-refused',
+        message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: LIMIT, is_error: true }] },
+        toolUseResult: `Error: ${LIMIT}`,
+      },
+    );
+    await writeFile(main, lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+    const when = new Date('2026-08-01T13:00:00Z');
+    const walk = async (d) => {
+      for (const ent of await readdir(d, { withFileTypes: true })) {
+        const p = join(d, ent.name);
+        if (ent.isDirectory()) await walk(p);
+        await utimes(p, when, when);
+      }
+    };
+    await walk(dir);
+    const runRefs = await detect([dir]);
+    ({ ir, details } = await parse(runRefs.find((r) => r.runId === SESSION_RUN_ID), { collectDetails: true }));
+  });
+
+  it('marks it failed and shows the reason Claude Code gave', () => {
+    const node = ir.nodes.find((n) => n.id === 'a:toolu_fxR001');
+    expect(node.status).toBe('error');
+    expect(details.get(node.id).error).toBe(LIMIT);
+  });
+
+  it('leaves agents that finished without an error reason', () => {
+    expect(details.get('a:toolu_fxA001').error).toBeUndefined();
   });
 });

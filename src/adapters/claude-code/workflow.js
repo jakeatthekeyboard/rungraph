@@ -284,6 +284,7 @@ export async function parseAgentFile(file, { collectTranscript = false } = {}) {
     durationMs: undefined,
     model: undefined,
     terminal: null, // 'completed' | 'error' | null (running/unknown)
+    errorReason: null, // why terminal is 'error', when the transcript says
     prompt: undefined,
     finalText: null,
     transcript: [],
@@ -316,7 +317,10 @@ export async function parseAgentFile(file, { collectTranscript = false } = {}) {
       tallyUnknownType(out.unknownTypes, obj?.type);
       continue;
     }
-    lastLine = obj;
+    // Attachments are harness bookkeeping (e.g. a `prompt_snapshot` written
+    // after the agent's final reply), not conversation, so they never decide
+    // how the agent ended.
+    if (obj.type !== 'attachment') lastLine = obj;
     if (typeof obj.timestamp === 'string') {
       out.startedAt ??= obj.timestamp;
       out.endedAt = obj.timestamp;
@@ -404,14 +408,20 @@ export async function parseAgentFile(file, { collectTranscript = false } = {}) {
   // Terminal state, in evidence order.
   const lastText =
     lastLine?.type === 'user' ? contentText(lastLine.message?.content).trim() : '';
-  if (INTERRUPT_TEXTS.has(lastText)) out.terminal = 'error';
-  else if (
+  if (INTERRUPT_TEXTS.has(lastText)) {
+    out.terminal = 'error';
+    out.errorReason = `Interrupted: ${lastText}`;
+  } else if (
     lastAssistant &&
     (lastAssistant.message.model === '<synthetic>' || lastAssistant.isApiErrorMessage) &&
     lastLine === lastAssistant
-  )
+  ) {
     out.terminal = 'error';
-  else if (lastAssistant?.message?.stop_reason === 'refusal') out.terminal = 'error';
+    out.errorReason = contentText(lastAssistant.message.content).trim() || 'API error';
+  } else if (lastAssistant?.message?.stop_reason === 'refusal') {
+    out.terminal = 'error';
+    out.errorReason = 'The model refused to continue';
+  }
   else if (structuredEnd) out.terminal = 'completed';
   else if (lastLine === lastAssistant && lastAssistant?.message?.stop_reason === 'end_turn')
     out.terminal = 'completed';
