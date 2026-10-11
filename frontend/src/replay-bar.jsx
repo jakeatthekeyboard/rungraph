@@ -176,15 +176,6 @@ export function ReplayBar({
     >
       <div class="controls">
         <button
-          class="ghost to-start"
-          disabled={off}
-          onClick={() => onToStart?.()}
-          title="to the start"
-          aria-label="to the start"
-        >
-          {LABEL.toStart}
-        </button>
-        <button
           class="ghost play"
           disabled={off}
           onClick={() => onTogglePlay?.()}
@@ -193,6 +184,15 @@ export function ReplayBar({
           aria-pressed={String(Boolean(playing))}
         >
           {playing ? LABEL.pause : LABEL.play}
+        </button>
+        <button
+          class="ghost to-start"
+          disabled={off}
+          onClick={() => onToStart?.()}
+          title="to the start"
+          aria-label="to the start"
+        >
+          {LABEL.toStart}
         </button>
         <button
           class="ghost step-back"
