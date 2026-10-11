@@ -94,6 +94,41 @@ describe('parse: session', () => {
     expect(isKnownMainLine(bridge)).toBe(true);
     expect(isKnownMainLine({ ...bridge, message: { role: 'user', content: 'hi' } })).toBe(false);
     expect(isKnownMainLine({ ...bridge, bridgeSessionId: 7 })).toBe(false);
+    // `cost-state`: running cost, durations and per-model token counters.
+    const cost = {
+      type: 'cost-state',
+      sessionId: 's',
+      totalCostUSD: 0.4996,
+      totalAPIDuration: 61000,
+      totalAPIDurationWithoutRetries: 61000,
+      totalToolDuration: 42000,
+      totalLinesAdded: 24,
+      totalLinesRemoved: 0,
+      totalDuration: 75000,
+      startTime: 1791728215000,
+      modelUsage: {
+        'claude-haiku-5-5': {
+          inputTokens: 120,
+          outputTokens: 900,
+          thinkingTokens: 0,
+          cacheReadInputTokens: 40000,
+          cacheCreationInputTokens: 9000,
+          webSearchRequests: 0,
+          costUSD: 0.08,
+        },
+      },
+      hasUnknownModelCost: false,
+    };
+    expect(isKnownMainLine(cost)).toBe(true);
+    expect(isKnownMainLine({ ...cost, totalCostUSD: 0 })).toBe(true); // integer cost, observed
+    expect(isKnownMainLine({ ...cost, modelUsage: {} })).toBe(true);
+    expect(isKnownMainLine({ ...cost, message: { role: 'user', content: 'hi' } })).toBe(false);
+    expect(isKnownMainLine({ ...cost, totalCostUSD: '0.49' })).toBe(false);
+    expect(isKnownMainLine({ ...cost, modelUsage: null })).toBe(false);
+    expect(isKnownMainLine({ ...cost, modelUsage: [] })).toBe(false);
+    expect(isKnownMainLine({ ...cost, modelUsage: { m: { note: 'words' } } })).toBe(false);
+    const { hasUnknownModelCost, ...missingKey } = cost;
+    expect(isKnownMainLine(missingKey)).toBe(false);
     expect(isKnownMainLine({ type: 'not-a-thing' })).toBe(false);
     expect(isKnownMainLine({ type: 'constructor' })).toBe(false);
     expect(isKnownMainLine(null)).toBe(false);

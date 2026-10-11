@@ -61,7 +61,60 @@ export const SHAPE_GATED_MAIN_TYPES = new Map([
       { bridgeSessionId: 'string', lastSequenceNum: 'number' },
     ),
   ],
+  ['cost-state', costStateShape],
 ]);
+
+/**
+ * `cost-state` arrived in Claude Code by October 2026: the session's running
+ * cost, durations, lines changed and per-model token counts. Numbers and one
+ * flag, no content. Observed on this machine 2026-10-11: 435 lines across 432
+ * sessions, every one with exactly these twelve keys. `modelUsage` maps a
+ * model id to a bag of counters, and is checked one level down for the same
+ * reason the top level is: a string or nested object turning up inside it is
+ * a shape nobody has seen, and must show as unrecognized.
+ */
+const COST_STATE_TOP = exactKeys(
+  [
+    'type',
+    'sessionId',
+    'totalCostUSD',
+    'totalAPIDuration',
+    'totalAPIDurationWithoutRetries',
+    'totalToolDuration',
+    'totalLinesAdded',
+    'totalLinesRemoved',
+    'totalDuration',
+    'startTime',
+    'modelUsage',
+    'hasUnknownModelCost',
+  ],
+  [],
+  {
+    sessionId: 'string',
+    totalCostUSD: 'number',
+    totalAPIDuration: 'number',
+    totalAPIDurationWithoutRetries: 'number',
+    totalToolDuration: 'number',
+    totalLinesAdded: 'number',
+    totalLinesRemoved: 'number',
+    totalDuration: 'number',
+    startTime: 'number',
+    hasUnknownModelCost: 'boolean',
+  },
+);
+
+function isPlainObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+function costStateShape(obj) {
+  if (!COST_STATE_TOP(obj) || !isPlainObject(obj.modelUsage)) return false;
+  for (const usage of Object.values(obj.modelUsage)) {
+    if (!isPlainObject(usage)) return false;
+    for (const v of Object.values(usage)) if (typeof v !== 'number') return false;
+  }
+  return true;
+}
 
 /**
  * A shape gate: the object's own keys must be exactly `required` plus any
