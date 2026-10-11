@@ -116,7 +116,7 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
   return (
     <>
       <div class="microlabel">this run</div>
-      <h2>{graph.meta?.title || '(untitled)'}</h2>
+      <h2>{graph.meta?.title || '(untitled)'}<CopyValue /></h2>
       {/* The one line that names the moment. Without it a pane listing one
           signal and three files reads as "this run is quiet" — the same
           silence-means-clean trap the coverage badge exists for, now in time. */}
@@ -128,12 +128,12 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
       )}
       <dl class="kv">
         <dt>agent</dt>
-        <dd data-adapter={graph.meta?.adapter}>{adapterName(graph.meta?.adapter) || '(unknown)'}</dd>
+        <dd data-adapter={graph.meta?.adapter}>{adapterName(graph.meta?.adapter) || '(unknown)'}<CopyValue /></dd>
         <dt>nodes</dt>
-        <dd>{graph.nodes.length}</dd>
-        {totals.toolCalls != null && (<><dt>tool calls</dt><dd>{totals.toolCalls}</dd></>)}
-        {totals.agents != null && (<><dt>agents</dt><dd>{totals.agents}</dd></>)}
-        {totals.tokens != null && (<><dt>tokens</dt><dd>{fmtTokens(totals.tokens)}</dd></>)}
+        <dd>{graph.nodes.length}<CopyValue /></dd>
+        {totals.toolCalls != null && (<><dt>tool calls</dt><dd>{totals.toolCalls}<CopyValue /></dd></>)}
+        {totals.agents != null && (<><dt>agents</dt><dd>{totals.agents}<CopyValue /></dd></>)}
+        {totals.tokens != null && (<><dt>tokens</dt><dd>{fmtTokens(totals.tokens)}<CopyValue /></dd></>)}
         {cov && (
           <>
             <dt>read</dt>
@@ -147,10 +147,10 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
                   {' '}+ {cov.sourcesUnread} unread source{cov.sourcesUnread === 1 ? '' : 's'}
                 </span>
               )}
-            </dd>
+            <CopyValue /></dd>
           </>
         )}
-        {covTypes && (<><dt>unread</dt><dd title="record types this rungraph does not understand">{covTypes}</dd></>)}
+        {covTypes && (<><dt>unread</dt><dd title="record types this rungraph does not understand">{covTypes}<CopyValue /></dd></>)}
         {/* A run-level count, because a reverted region can be off screen. This
             is an ACCURACY caveat, deliberately kept off the coverage badge:
             "how much could I read" and "how much of this still stands" are
@@ -161,7 +161,7 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
             <dt>reverted</dt>
             <dd title="nodes whose work the user rolled back — still recorded, no longer standing">
               {revertedCount} node{revertedCount === 1 ? '' : 's'} rolled back
-            </dd>
+            <CopyValue /></dd>
           </>
         )}
       </dl>
@@ -537,25 +537,25 @@ function NodeDetail({
   return (
     <>
       <div class="microlabel">{node.kind}</div>
-      <h2>{node.label}</h2>
+      <h2>{node.label}<CopyValue /></h2>
       <dl class="kv">
         <dt>status</dt>
-        <dd data-status={status}>{status}</dd>
-        {node.model && (<><dt>model</dt><dd>{node.model}</dd></>)}
+        <dd data-status={status}>{status}<CopyValue /></dd>
+        {node.model && (<><dt>model</dt><dd>{node.model}<CopyValue /></dd></>)}
         {node.tokens && (
           <>
             <dt>tokens</dt>
-            <dd>{fmtTokens(node.tokens.input)} in · {fmtTokens(node.tokens.output)} out</dd>
+            <dd>{fmtTokens(node.tokens.input)} in · {fmtTokens(node.tokens.output)} out<CopyValue /></dd>
           </>
         )}
-        {node.durationMs != null && (<><dt>duration</dt><dd>{fmtDuration(node.durationMs)}</dd></>)}
+        {node.durationMs != null && (<><dt>duration</dt><dd>{fmtDuration(node.durationMs)}<CopyValue /></dd></>)}
         {node.callCount > 1 && (
           <>
             <dt>calls</dt>
-            <dd>{midGroup ? `${callsShown} of ${node.callCount}` : node.callCount}</dd>
+            <dd>{midGroup ? `${callsShown} of ${node.callCount}` : node.callCount}<CopyValue /></dd>
           </>
         )}
-        {node.startedAt && (<><dt>started</dt><dd>{fmtTime(node.startedAt)}</dd></>)}
+        {node.startedAt && (<><dt>started</dt><dd>{fmtTime(node.startedAt)}<CopyValue /></dd></>)}
         {/* Stated in words, not only as a struck label: this is the one place
             the user can find out what "struck through" meant. */}
         {node.reverted && (
@@ -563,7 +563,7 @@ function NodeDetail({
             <dt>reverted</dt>
             <dd title="the user rolled this work back — it is still recorded, but it no longer stands">
               rolled back by the user
-            </dd>
+            <CopyValue /></dd>
           </>
         )}
       </dl>
@@ -786,13 +786,14 @@ function EdgeDetail({ graph, edgeId, replay = null }) {
       <div class="microlabel">{edge.kind} edge</div>
       <h2>
         {name(edge.from, from)} → {name(edge.to, to)}
+        <CopyValue />
       </h2>
       {future ? (
         <div class="loading">not yet — at this moment this edge has not happened</div>
       ) : (
         <>
           <dl class="kv">
-            {edge.reason && (<><dt>reason</dt><dd>⚑ {edge.reason}</dd></>)}
+            {edge.reason && (<><dt>reason</dt><dd>⚑ {edge.reason}<CopyValue /></dd></>)}
           </dl>
           {edge.label && (
             <>
@@ -859,5 +860,38 @@ function ResizeHandle() {
       onLostPointerCapture={end}
       onDblClick={() => setInspectorWidth(null)}
     />
+  );
+}
+
+/**
+ * Copy button for a heading or a key/value row: copies its parent element's
+ * text as shown (minus the button itself), so it always matches what the
+ * user is reading, including replay's "3 of 17" and formatted token counts.
+ */
+function CopyValue() {
+  const [state, setState] = useState(null); // null | 'ok' | 'failed'
+  const copy = (e) => {
+    e.stopPropagation();
+    const holder = e.currentTarget.parentElement.cloneNode(true);
+    holder.querySelectorAll('.copy-value').forEach((b) => b.remove());
+    const text = holder.textContent.replace(/\s+/g, ' ').trim();
+    navigator.clipboard?.writeText(text).then(
+      () => {
+        setState('ok');
+        setTimeout(() => setState(null), 1400);
+      },
+      () => setState('failed'),
+    );
+  };
+  return (
+    <button
+      type="button"
+      class="copy-value"
+      onClick={copy}
+      title={state === 'failed' ? 'copy failed' : 'copy'}
+      aria-label="copy"
+    >
+      {state === 'ok' ? '✓' : '⧉'}
+    </button>
   );
 }

@@ -898,6 +898,28 @@ button.ghost[data-on="true"] {
 }
 .kv dt { color: var(--ink-faint); }
 .kv dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+/* Copy button on each heading and row: faint until the row is hovered. */
+.copy-value {
+  margin-left: 6px;
+  padding: 0 3px;
+  font: inherit;
+  font-family: var(--ui);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  line-height: 1;
+  vertical-align: 1px;
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 100ms ease-out, color 100ms ease-out;
+}
+.kv dd:hover .copy-value,
+.inspector h2:hover .copy-value,
+.copy-value:focus-visible { opacity: 1; }
+.copy-value:hover { color: var(--ink); background: var(--bg-raised); }
 .kv dd[data-status="completed"] { color: var(--sage); }
 .kv dd[data-status="error"] { color: var(--clay); }
 .kv dd[data-status="running"] { color: var(--amber); }
