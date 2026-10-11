@@ -817,6 +817,11 @@ button.ghost[data-on="true"] {
 }
 .transcript-entry .who[data-role="assistant"] { color: var(--sage); }
 .transcript-entry .who[data-role="user"] { color: var(--amber); }
+.transcript-entry .tool-used {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-bottom: 2px;
+}
 .tool-call { margin-bottom: 12px; }
 .tool-call .head {
   display: flex;

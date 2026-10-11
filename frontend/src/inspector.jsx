@@ -614,6 +614,9 @@ function NodeDetail({
 }
 
 /** `futureFrom`: the first call row (0-based) that has not happened yet at the playhead; Infinity when all have. */
+// A transcript line where the agent called a tool (results are role 'user').
+const isToolCall = (t) => t.role === 'assistant' && !!t.toolName;
+
 function DetailBody({ detail, futureFrom = Infinity }) {
   switch (detail.kind) {
     case 'turn':
@@ -649,8 +652,10 @@ function DetailBody({ detail, futureFrom = Infinity }) {
                 <div class="transcript-entry" key={i}>
                   <div class="who" data-role={t.role}>
                     {t.role}
+                    {isToolCall(t) ? ' · tool' : ''}
                     {t.toolName ? ` · ${t.toolName}` : ''}
                   </div>
+                  {isToolCall(t) && <div class="tool-used">Used the {t.toolName} tool</div>}
                   <pre>{t.text}</pre>
                 </div>
               ))}
