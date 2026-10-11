@@ -214,7 +214,7 @@ body {
   background: var(--bg-panel);
   border: 1px solid var(--hairline);
   border-radius: 6px;
-  padding: 2px 6px;
+  padding: 2px 2px 2px 5px;
   cursor: pointer;
 }
 .font-size-select:hover { color: var(--ink); border-color: var(--ink-faint); }
