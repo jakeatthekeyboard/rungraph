@@ -289,12 +289,17 @@ export async function parseAgentFile(file, { collectTranscript = false } = {}) {
     transcript: [],
     files: [],
     toolCalls: 0,
+    // Agents THIS agent launched (Agent tool calls inside its transcript):
+    // [{ toolUseId, input, ts, result, failed }]. The session parser turns
+    // them into nested agent nodes; workflow callers ignore them.
+    agentSpawns: [],
     unrecognized: 0,
     // Coverage, in the same unit the caller aggregates: non-blank lines read.
     records: 0,
     unknownTypes: {},
   };
   const models = new Map();
+  const spawnById = new Map();
   let lastAssistant = null;
   let lastLine = null;
   let structuredEnd = false;
@@ -324,6 +329,13 @@ export async function parseAgentFile(file, { collectTranscript = false } = {}) {
         if (collectTranscript && !obj.isMeta) push(out.transcript, { role: 'user', text: cap(c, 1500) });
       } else if (Array.isArray(c)) {
         if (obj.toolEndsTurn === true) structuredEnd = true;
+        for (const x of c) {
+          const sp = x?.type === 'tool_result' ? spawnById.get(x.tool_use_id) : undefined;
+          if (!sp) continue;
+          if (x.is_error === true) sp.failed = true;
+          const tur = obj.toolUseResult;
+          if (tur && typeof tur === 'object' && !Array.isArray(tur)) sp.result = tur;
+        }
         if (collectTranscript) {
           const tr = c.find((x) => x?.type === 'tool_result');
           if (tr && (tr.is_error === true || typeof obj.toolUseResult === 'string')) {
@@ -358,6 +370,11 @@ export async function parseAgentFile(file, { collectTranscript = false } = {}) {
         // would be a silent agent/human mismatch about what was touched.
         const paths = filePathsFromToolInput(block.name, block.input);
         if (paths.length) out.files = mergeFiles(out.files, paths);
+        if (block.name === 'Agent' && typeof block.id === 'string' && !spawnById.has(block.id)) {
+          const sp = { toolUseId: block.id, input: block.input ?? {}, ts: obj.timestamp, result: null, failed: false };
+          spawnById.set(block.id, sp);
+          out.agentSpawns.push(sp);
+        }
         if (block.name === 'StructuredOutput') {
           out.finalText = JSON.stringify(block.input, null, 2);
         }

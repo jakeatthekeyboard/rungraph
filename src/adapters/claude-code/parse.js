@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { readdir, readFile } from 'node:fs/promises';
 import { emptyGraph, snippet } from '../../ir.js';
 import { readJsonLines, statOrNull } from '../../util.js';
 import { parseWorkflowRun, readManifest, parseAgentFile } from './workflow.js';
@@ -115,8 +116,9 @@ async function parseSession(ref, opts) {
 
   // ---- agents: parse their transcripts for status/tokens/details ---------
   const subagentsDir = join(ref.projectDir, ref.sessionId, 'subagents');
+  const agentIds = lazyAgentIdIndex(subagentsDir);
   for (const spawn of b.agentSpawns.values()) {
-    await materializeAgent(spawn, { g, details, collect, subagentsDir, notifications, b, live });
+    await materializeAgent(spawn, { g, details, collect, subagentsDir, notifications, b, live, agentIds });
   }
   for (const spawn of b.workflowSpawns.values()) {
     await materializeWorkflow(spawn, { ref, g, details, notifications, b, live });
@@ -720,11 +722,50 @@ function summarizeResult(tur) {
 
 // ---- agent + workflow node materialization -------------------------------
 
+/**
+ * toolUseId → agentId, read from `subagents/agent-<id>.meta.json` (each holds
+ * the `toolUseId` that launched it). Built once, on first use, and only when a
+ * nested agent needs it, so a run without nesting never reads the meta files.
+ */
+function lazyAgentIdIndex(dir) {
+  let index = null;
+  return {
+    async get(toolUseId) {
+      if (!index) {
+        index = new Map();
+        let names = [];
+        try {
+          names = await readdir(dir);
+        } catch {
+          names = [];
+        }
+        for (const name of names) {
+          const m = /^agent-(.+)\.meta\.json$/.exec(name);
+          if (!m) continue;
+          try {
+            const meta = JSON.parse(await readFile(join(dir, name), 'utf8'));
+            if (meta && typeof meta.toolUseId === 'string') index.set(meta.toolUseId, m[1]);
+          } catch {
+            // unreadable or half-written meta: that agent just stays unlinked
+          }
+        }
+      }
+      return index.get(toolUseId);
+    },
+  };
+}
+
+/** Deepest level of agents-calling-agents drawn; deeper calls stay in the transcript only. */
+const MAX_AGENT_DEPTH = 8;
+
 async function materializeAgent(spawn, ctx) {
   const { g, details, collect, subagentsDir, notifications, b, live } = ctx;
+  const depth = ctx.depth ?? 0;
   const input = spawn.input ?? {};
   const syncDone = spawn.result?.status === 'completed';
-  const agentId = spawn.result?.agentId;
+  // A nested agent's spawn has no structured tool result in its parent's
+  // transcript, so its id comes from the subagent's own .meta.json instead.
+  const agentId = spawn.result?.agentId ?? (depth > 0 ? await ctx.agentIds?.get(spawn.toolUseId) : undefined);
   // Id from the spawning tool_use — known from the first parse and stable
   // across incremental re-parses (SSE deltas merge by id).
   const id = `a:${spawn.toolUseId}`;
@@ -775,6 +816,7 @@ async function materializeAgent(spawn, ctx) {
     }
   }
 
+  let nested = [];
   // Enrich from the agent's own transcript (tokens, timing, transcript, status).
   const file = agentId ? join(subagentsDir, `agent-${agentId}.jsonl`) : null;
   const st = file ? await statOrNull(file) : null;
@@ -796,6 +838,7 @@ async function materializeAgent(spawn, ctx) {
     g.meta.coverage.records += parsed.records;
     g.meta.coverage.unrecognized += parsed.unrecognized;
     mergeIntoExt(g, parsed.unknownTypes);
+    nested = parsed.agentSpawns;
   } else if (agentId) {
     // Referenced but missing transcript → placeholder, never a crash.
     node.ext = { ...(node.ext ?? {}), transcriptMissing: true };
@@ -820,6 +863,26 @@ async function materializeAgent(spawn, ctx) {
     });
   }
   details.set(id, detail);
+
+  // Agents this agent launched: child nodes with a spawn edge from this agent
+  // and a return edge back to it. Same rules as top-level agents, one level
+  // down. A call that errored (denied, refused) never ran, so it is skipped.
+  if (depth + 1 > MAX_AGENT_DEPTH) return;
+  for (const child of nested) {
+    if (child.failed) continue;
+    await materializeAgent(
+      {
+        toolUseId: child.toolUseId,
+        input: child.input,
+        ts: child.ts,
+        fromNodeId: id,
+        turnId: id,
+        result: child.result,
+        resultTurnId: id,
+      },
+      { ...ctx, depth: depth + 1 },
+    );
+  }
 }
 
 async function materializeWorkflow(spawn, ctx) {

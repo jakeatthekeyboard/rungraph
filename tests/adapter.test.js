@@ -487,3 +487,83 @@ describe('parse: tool-group timing (callOffsets + endedAt)', () => {
     });
   });
 });
+
+describe('agents that call agents', () => {
+  // A copy of the fixture tree where the flat subagent (launched by the main
+  // session as toolu_fxA001) launches an agent of its own, and tries a second
+  // that is refused. Built in a temp dir; the fixture tree is never written.
+  const PARENT = 'a123456789abcdef0';
+  const CHILD = 'b223456789abcdef0';
+  let ir;
+  beforeAll(async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rg-nested-'));
+    await cp(FIXTURE_ROOT, dir, { recursive: true });
+    const sub = join(dir, '-home-dev-acme', '11111111-1111-4111-8111-111111111111', 'subagents');
+    const parentFile = join(sub, `agent-${PARENT}.jsonl`);
+    const lines = (await readFile(parentFile, 'utf8')).trim().split('\n').map((l) => JSON.parse(l));
+    const last = lines.pop(); // the final end_turn reply stays last
+    const tmpl = lines[1]; // an assistant tool_use line to copy the envelope from
+    const at = (sec) => `2026-08-01T12:05:${String(sec).padStart(2, '0')}.000Z`;
+    const assistantCall = (id, input, ts) => ({
+      ...tmpl,
+      uuid: `u-${id}`,
+      timestamp: ts,
+      message: { ...tmpl.message, id: `msg-${id}`, content: [{ type: 'tool_use', id, name: 'Agent', input }] },
+    });
+    const result = (id, text, ts, isError) => ({
+      ...lines[2],
+      uuid: `r-${id}`,
+      timestamp: ts,
+      message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: text, ...(isError ? { is_error: true } : {}) }] },
+      toolUseResult: undefined,
+    });
+    lines.push(
+      assistantCall('toolu_fxN001', { description: 'Check redirect race', prompt: 'Confirm the redirect race.', subagent_type: 'general-purpose' }, at(10)),
+      result('toolu_fxN001', `Confirmed.\nagentId: ${CHILD}`, at(20), false),
+      assistantCall('toolu_fxN002', { description: 'Refused helper', prompt: 'never runs', subagent_type: 'general-purpose' }, at(21)),
+      result('toolu_fxN002', 'Agent spawn refused', at(22), true),
+    );
+    lines.push(last);
+    await writeFile(parentFile, lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+    const child = [
+      { ...lines[0], agentId: CHILD, uuid: 'c-1', parentUuid: null, timestamp: at(11), message: { role: 'user', content: 'Confirm the redirect race.' } },
+      { ...last, agentId: CHILD, uuid: 'c-2', parentUuid: 'c-1', timestamp: at(19) },
+    ];
+    await writeFile(join(sub, `agent-${CHILD}.jsonl`), child.map((l) => JSON.stringify(l)).join('\n') + '\n');
+    await writeFile(
+      join(sub, `agent-${CHILD}.meta.json`),
+      JSON.stringify({ agentType: 'general-purpose', toolUseId: 'toolu_fxN001', parentAgentId: PARENT, spawnDepth: 2 }),
+    );
+    const when = new Date('2026-08-01T13:00:00Z');
+    const walk = async (d) => {
+      for (const ent of await readdir(d, { withFileTypes: true })) {
+        const p = join(d, ent.name);
+        if (ent.isDirectory()) await walk(p);
+        await utimes(p, when, when);
+      }
+    };
+    await walk(dir);
+    const runRefs = await detect([dir]);
+    ({ ir } = await parse(runRefs.find((r) => r.runId === SESSION_RUN_ID)));
+  });
+
+  it('draws the nested agent as a node under the agent that launched it', () => {
+    const child = ir.nodes.find((n) => n.id === 'a:toolu_fxN001');
+    expect(child).toBeDefined();
+    expect(child.kind).toBe('agent');
+    expect(child.label).toBe('Check redirect race');
+    expect(child.agentId).toBe(CHILD); // linked through its .meta.json
+    expect(child.status).toBe('completed');
+  });
+
+  it('links it with a spawn from the parent agent and a return back to it', () => {
+    const between = (kind, from, to) => ir.edges.some((e) => e.kind === kind && e.from === from && e.to === to);
+    expect(between('spawn', 'a:toolu_fxA001', 'a:toolu_fxN001')).toBe(true);
+    expect(between('return', 'a:toolu_fxN001', 'a:toolu_fxA001')).toBe(true);
+  });
+
+  it('skips a nested call that errored, and still reads every line', () => {
+    expect(ir.nodes.some((n) => n.id === 'a:toolu_fxN002')).toBe(false);
+    expect(ir.meta.coverage.sourcesUnread).toBe(0);
+  });
+});
