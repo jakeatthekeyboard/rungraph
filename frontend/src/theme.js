@@ -28,9 +28,9 @@ export function setTheme(theme) {
 const FONT_KEY = 'rungraph.fontSize';
 
 export const FONT_SIZES = [
-  { id: 'small', label: 'Sm', title: 'small text · 13px' },
-  { id: 'medium', label: 'Md', title: 'medium text · 14.5px' },
-  { id: 'large', label: 'Lg', title: 'large text · 16px' },
+  { id: 'small', label: 'Sm', title: 'small font · 13px' },
+  { id: 'medium', label: 'Md', title: 'medium font · 14.5px' },
+  { id: 'large', label: 'Lg', title: 'large font · 16px' },
 ];
 
 export function storedFontSize() {

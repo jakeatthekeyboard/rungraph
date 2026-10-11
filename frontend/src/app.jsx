@@ -1058,7 +1058,7 @@ export function App() {
             setFontSizeState(e.currentTarget.value);
           }}
           title={FONT_SIZES.find((f) => f.id === fontSize)?.title}
-          aria-label="text size"
+          aria-label="font size"
         >
           {FONT_SIZES.map((f) => (
             <option key={f.id} value={f.id} title={f.title}>{f.label}</option>
