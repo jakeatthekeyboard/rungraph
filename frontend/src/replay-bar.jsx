@@ -185,6 +185,16 @@ export function ReplayBar({
           {LABEL.toStart}
         </button>
         <button
+          class="ghost play"
+          disabled={off}
+          onClick={() => onTogglePlay?.()}
+          title="play / pause  ( space )"
+          aria-label={playing ? 'pause' : 'play'}
+          aria-pressed={String(Boolean(playing))}
+        >
+          {playing ? LABEL.pause : LABEL.play}
+        </button>
+        <button
           class="ghost step-back"
           disabled={off}
           onClick={() => onStep?.(-1)}
@@ -201,16 +211,6 @@ export function ReplayBar({
           aria-label="step forward"
         >
           {LABEL.stepFwd}
-        </button>
-        <button
-          class="ghost play"
-          disabled={off}
-          onClick={() => onTogglePlay?.()}
-          title="play / pause  ( space )"
-          aria-label={playing ? 'pause' : 'play'}
-          aria-pressed={String(Boolean(playing))}
-        >
-          {playing ? LABEL.pause : LABEL.play}
         </button>
       </div>
 
