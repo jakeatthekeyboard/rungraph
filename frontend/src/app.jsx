@@ -673,6 +673,19 @@ export function App() {
     if (graph) setLinkMiss(null);
   }, [graph]);
 
+  // Copy the run's title from the header, e.g. to search for it or name a bug report.
+  const [titleCopied, setTitleCopied] = useState(false);
+  const copyTitle = () => {
+    const title = graph?.meta.title || '(untitled)';
+    navigator.clipboard?.writeText(title).then(
+      () => {
+        setTitleCopied(true);
+        setTimeout(() => setTitleCopied(false), 1600);
+      },
+      () => setNote(`could not copy — the name is ${title}`),
+    );
+  };
+
   // Copy-link: the current view — run, selected node, focus — as a URL hash.
   const copyLink = () => {
     const hash = buildFocusHash({
@@ -950,9 +963,16 @@ export function App() {
         <span class="run-title">
           {graph ? (
             <>
-              <strong>{graph.meta.title || '(untitled)'}</strong>
-              {'  ·  '}
-              {graph.meta.kind}
+              <strong class="run-name">{graph.meta.title || '(untitled)'}</strong>
+              <span class="run-kind">{'  ·  '}{graph.meta.kind}</span>
+              <button
+                class="copy-title"
+                onClick={copyTitle}
+                title="copy the session name"
+                aria-label="copy the session name"
+              >
+                {titleCopied ? '✓' : '⧉'}
+              </button>
             </>
           ) : (
             'pick a run'

@@ -97,12 +97,30 @@ body {
 .header .run-title {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  white-space: pre;
   color: var(--ink-dim);
 }
 .header .run-title strong { color: var(--ink); font-weight: 500; }
+/* Only the name shortens; the kind and the copy button always stay visible. */
+.header .run-title .run-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header .run-title .run-kind { flex-shrink: 0; }
+.header .run-title .copy-title {
+  flex-shrink: 0;
+  margin-left: 6px;
+  padding: 0 4px;
+  font: inherit;
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.header .run-title .copy-title:hover { color: var(--ink); }
 
 .microlabel {
   font-family: var(--mono);
