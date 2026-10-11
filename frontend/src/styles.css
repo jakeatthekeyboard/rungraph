@@ -1,8 +1,8 @@
 /* rungraph — dbt Canvas look: slate surfaces, card nodes, dotted ground. */
 
 :root {
-  /* dbt Canvas look: neutral slate surfaces, white-on-dark cards, an indigo
-     accent for selection and focus. Dark is the default; [data-theme="light"]
+  /* dbt Canvas look: neutral slate surfaces, card nodes, no accent hue:
+     selection and focus use the ink. Dark is the default; [data-theme="light"]
      on <html> swaps every token below (main.jsx sets it from localStorage). */
   color-scheme: dark;
   --bg: #15171c;
@@ -18,9 +18,10 @@
   --ink-dim: #a1a8b5;
   --ink-faint: #6c7483;
 
-  /* Selection, focus, on-states: the dbt Canvas indigo. */
-  --accent: oklch(0.68 0.16 280);
-  --accent-dim: oklch(0.50 0.12 280);
+  /* Selection, focus, on-states: no hue, just the ink. Colour is reserved
+     for meaning (orange running/human, green done/live, red error). */
+  --accent: var(--ink);
+  --accent-dim: var(--ink-dim);
   /* Running, live, human, edge reasons: the dbt orange. */
   --amber: oklch(0.74 0.16 50);
   --amber-dim: oklch(0.55 0.11 50);
@@ -49,12 +50,12 @@
   --node-agent: var(--card);
   --node-tool: var(--card);
   --node-workflow: var(--card);
-  --node-human: color-mix(in oklch, var(--accent) 9%, var(--card));
-  --kind-turn: var(--accent);
+  --node-human: color-mix(in oklch, var(--amber) 9%, var(--card));
+  --kind-turn: var(--ink-dim);
   --kind-agent: var(--sage);
   --kind-tool: var(--ink-faint);
   --kind-workflow: var(--violet);
-  --kind-human: var(--accent);
+  --kind-human: var(--amber);
 
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --ui: Inter, "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -80,8 +81,6 @@
   --ink-dim: #545c6b;
   --ink-faint: #8a92a0;
 
-  --accent: oklch(0.52 0.21 278);
-  --accent-dim: oklch(0.70 0.12 278);
   --amber: oklch(0.64 0.18 45);
   --amber-dim: oklch(0.78 0.10 50);
   --sage: oklch(0.58 0.14 155);
@@ -220,8 +219,8 @@ button.ghost {
 button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 button.ghost[data-on="true"] {
   color: var(--accent);
-  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
-  background: color-mix(in oklch, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 /* ---------- main columns ---------- */
@@ -323,7 +322,7 @@ button.ghost[data-on="true"] {
   font-size: 10.5px;
   color: var(--ink-faint);
 }
-.picker .project-toggle .count .live { color: var(--accent); font-size: 8px; }
+.picker .project-toggle .count .live { color: var(--sage); font-size: 8px; }
 /* Collapsed group holding the open run: keep the selection visible on the header. */
 .picker .project-group[data-open="false"][data-holds-selection="true"] .microlabel {
   color: var(--accent);
@@ -343,7 +342,7 @@ button.ghost[data-on="true"] {
 }
 .run-item:hover { background: var(--bg-raised); }
 .run-item[data-selected="true"] {
-  background: color-mix(in oklch, var(--accent) 7%, var(--bg-raised));
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-raised));
   border-left-color: var(--accent);
 }
 .run-item .title {
@@ -362,7 +361,7 @@ button.ghost[data-on="true"] {
   font-size: 10.5px;
   color: var(--ink-faint);
 }
-.run-item .sub .live { color: var(--accent); }
+.run-item .sub .live { color: var(--sage); }
 .run-item .sub .kind-workflow { color: var(--violet); }
 .picker .project-group { margin-bottom: 6px; }
 .picker .empty {
@@ -586,7 +585,7 @@ button.ghost[data-on="true"] {
 .minimap .mm-node[data-kind="turn"] { fill: var(--ink-dim); }
 .minimap .mm-node[data-kind="agent"] { fill: var(--sage); }
 .minimap .mm-node[data-kind="workflow"] { fill: var(--violet); }
-.minimap .mm-node[data-kind="human"] { fill: var(--accent); }
+.minimap .mm-node[data-kind="human"] { fill: var(--amber); }
 /* After the kind rules on purpose: a focused node reads as focused first. The
    non-scaling stroke blooms it past the 2px floor, so a focus that is off-screen
    in the main view is still findable here. */
@@ -602,7 +601,7 @@ button.ghost[data-on="true"] {
 }
 .minimap .mm-beacon { fill: var(--clay); }
 .minimap .mm-view {
-  fill: color-mix(in oklch, var(--accent) 10%, transparent);
+  fill: color-mix(in srgb, var(--accent) 10%, transparent);
   stroke: var(--accent);
   cursor: grab;
 }
@@ -813,7 +812,7 @@ button.ghost[data-on="true"] {
   transition: background 120ms ease-out;
 }
 .inspector-resize:hover,
-:root[data-resizing="inspector"] .inspector-resize { background: color-mix(in oklch, var(--accent) 45%, transparent); }
+:root[data-resizing="inspector"] .inspector-resize { background: color-mix(in srgb, var(--accent) 45%, transparent); }
 /* While dragging: no width animation (it would lag the pointer), no text
    selection, and the resize cursor everywhere. */
 :root[data-resizing="inspector"] .inspector,
@@ -847,7 +846,7 @@ button.ghost[data-on="true"] {
 .kv dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
 .kv dd[data-status="completed"] { color: var(--sage); }
 .kv dd[data-status="error"] { color: var(--clay); }
-.kv dd[data-status="running"] { color: var(--accent); }
+.kv dd[data-status="running"] { color: var(--amber); }
 
 .inspector pre {
   background: var(--bg);
@@ -947,7 +946,7 @@ button.ghost[data-on="true"] {
 }
 .inspector .row[data-severity="high"] .glyph { color: var(--clay); }
 .inspector .row[data-on="true"] {
-  background: color-mix(in oklch, var(--accent) 9%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
   border-left-color: var(--accent);
   color: var(--ink);
 }
@@ -1090,7 +1089,7 @@ button.ghost[data-on="true"] {
   background: color-mix(in oklch, currentColor 12%, transparent);
 }
 .agent-rail .chip .n { color: var(--ink-faint); }
-.agent-rail .chip .live { color: var(--accent); font-size: 8px; }
+.agent-rail .chip .live { color: var(--sage); font-size: 8px; }
 
 /* ---------- share & reach layer ---------- */
 
@@ -1113,7 +1112,7 @@ button.ghost[data-on="true"] {
 .run-item .sub .provenance.snap { color: var(--accent-dim); }
 .run-item .title .check { margin-right: 6px; color: var(--accent); }
 .run-item[data-checked="true"] {
-  background: color-mix(in oklch, var(--accent) 7%, var(--bg-raised));
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-raised));
   border-left-color: var(--accent-dim);
 }
 
@@ -1139,12 +1138,12 @@ button.ghost[data-on="true"] {
 .picker-tools .run-search::placeholder { color: var(--ink-faint); }
 .picker-tools .run-search:focus {
   outline: none;
-  border-color: color-mix(in oklch, var(--accent) 55%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 .picker-tools .run-search::-webkit-search-cancel-button { filter: invert(0.6); }
 .picker-tools .primary {
   color: var(--accent);
-  border-color: color-mix(in oklch, var(--accent) 45%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 .picker-tools .primary:disabled { opacity: 0.45; cursor: default; }
 
@@ -1168,8 +1167,8 @@ button.ghost[data-on="true"] {
   align-items: center;
   gap: 10px;
   padding: 7px 12px;
-  border-bottom: 1px solid color-mix(in oklch, var(--accent) 40%, transparent);
-  background: color-mix(in oklch, var(--accent) 10%, var(--bg-panel));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
   font-family: var(--mono);
   font-size: 11.5px;
   color: var(--ink);
@@ -1179,11 +1178,11 @@ button.ghost[data-on="true"] {
   flex: none;
   color: var(--accent);
   text-decoration: none;
-  border: 1px solid color-mix(in oklch, var(--accent) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
   border-radius: 6px;
   padding: 2px 10px;
 }
-.link-banner .jump:hover { background: color-mix(in oklch, var(--accent) 12%, transparent); }
+.link-banner .jump:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
 /* ---------- export dialog ---------- */
 .export-overlay {
@@ -1267,12 +1266,12 @@ button.ghost[data-on="true"] {
   border-radius: 6px;
   padding: 4px 9px;
 }
-.export-as input:focus { outline: none; border-color: color-mix(in oklch, var(--accent) 55%, transparent); }
+.export-as input:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
 
 .export-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .export-actions .primary {
   color: var(--accent);
-  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
 }
 .export-actions .primary:disabled { opacity: 0.45; cursor: default; }
 
@@ -1358,7 +1357,7 @@ button.ghost[data-on="true"] {
 .resume-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .resume-actions .primary {
   color: var(--accent);
-  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
 }
 .resume-actions .primary:disabled { opacity: 0.45; cursor: default; }
 
@@ -1403,7 +1402,7 @@ button.ghost[data-on="true"] {
 }
 .replay-bar .play[aria-pressed="true"] {
   color: var(--accent);
-  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 /* The scrubber: a 12px hit area over a 2px hairline. Event index, not wall
@@ -1443,7 +1442,7 @@ button.ghost[data-on="true"] {
   background: var(--ink-faint);
 }
 .replay-bar .nub[data-kind="start"] { height: 10px; margin-top: -5px; background: var(--ink-dim); }
-.replay-bar .nub[data-past="true"] { background: color-mix(in oklch, var(--accent) 70%, var(--ink-faint)); }
+.replay-bar .nub[data-past="true"] { background: color-mix(in srgb, var(--accent) 70%, var(--ink-faint)); }
 /* Step numbers: pills like the canvas's edge numbers, centred on their nub. */
 .replay-bar .num {
   position: absolute;
@@ -1463,7 +1462,7 @@ button.ghost[data-on="true"] {
   pointer-events: auto;
 }
 .replay-bar .num:hover { color: var(--ink); border-color: var(--ink-faint); }
-.replay-bar .num[data-past="true"] { border-color: color-mix(in oklch, var(--accent) 60%, transparent); }
+.replay-bar .num[data-past="true"] { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
 .replay-bar .num[data-here="true"] { color: var(--bg); background: var(--accent); border-color: var(--accent); }
 .replay-bar .playhead {
   position: absolute;
