@@ -22,7 +22,17 @@ export function defaultRootDirs() {
     return [override ?? fallback];
   };
   return {
-    'claude-code': roots('RUNGRAPH_CLAUDE_PROJECTS', join(homedir(), '.claude', 'projects')),
+    'claude-code': [
+      ...roots('RUNGRAPH_CLAUDE_PROJECTS', join(homedir(), '.claude', 'projects')),
+      // Claude desktop's Cowork sessions. Overriding RUNGRAPH_CLAUDE_PROJECTS
+      // (tests, a pinned corpus) drops this default too, so a suite pointed
+      // at fixtures never wanders into the developer's real Cowork history.
+      ...(process.env.RUNGRAPH_CLAUDE_COWORK !== undefined
+        ? roots('RUNGRAPH_CLAUDE_COWORK')
+        : process.env.RUNGRAPH_CLAUDE_PROJECTS === undefined
+          ? claudeDesktopUserDataDirs().map((d) => join(d, 'local-agent-mode-sessions'))
+          : []),
+    ],
     codex: roots('RUNGRAPH_CODEX_SESSIONS', join(homedir(), '.codex', 'sessions')),
     hermes: roots('RUNGRAPH_HERMES_HOME', join(homedir(), '.hermes')),
     // opencode keeps ONE global database in its XDG data dir. The env var it
@@ -51,6 +61,25 @@ export function defaultRootDirs() {
       ...roots('RUNGRAPH_CURSOR_CLI_HOME', process.env.CURSOR_DATA_DIR || join(homedir(), '.cursor')),
     ],
   };
+}
+
+/**
+ * Every place Claude desktop may keep its `userData`. A missing directory
+ * costs one failed readdir, so all candidates are listed. `Claude-3p` is the
+ * build for third-party model providers, seen on Windows under
+ * %LOCALAPPDATA% (2026-10-13); macOS `Claude` is verified.
+ */
+function claudeDesktopUserDataDirs() {
+  const names = ['Claude', 'Claude-3p'];
+  let bases;
+  if (process.platform === 'darwin') bases = [join(homedir(), 'Library', 'Application Support')];
+  else if (process.platform === 'win32') {
+    bases = [
+      process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'),
+      process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'),
+    ];
+  } else bases = [process.env.XDG_CONFIG_HOME || join(homedir(), '.config')];
+  return bases.flatMap((b) => names.map((n) => join(b, n)));
 }
 
 /**

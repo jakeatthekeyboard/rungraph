@@ -193,7 +193,7 @@ Everything downstream — UI, CLI, HTTP API, bundles — consumes only the IR.
 
 | adapter | reads | point it elsewhere |
 |---|---|---|
-| Claude Code | `~/.claude/projects` — sessions, subagents, Workflow runs | |
+| Claude Code | `~/.claude/projects` — sessions, subagents, Workflow runs; plus Claude desktop Cowork sessions (`local-agent-mode-sessions` under the app's data dir, `Claude` or `Claude-3p`) | |
 | Codex CLI | `~/.codex/sessions` — rollout threads and spawned subagents | |
 | Hermes Agent | `~/.hermes/state.db` | `RUNGRAPH_HERMES_HOME` |
 | opencode | `~/.local/share/opencode/opencode.db` (`XDG_DATA_HOME` honoured) | `RUNGRAPH_OPENCODE_HOME` |

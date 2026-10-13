@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { headLines, tailLines, safeParseJson, statOrNull, shellQuote } from '../../util.js';
 import { snippet } from '../../ir.js';
@@ -38,12 +38,17 @@ const SESSION_FILE_RE = /^[0-9a-f-]{8,}\.jsonl$/;
 export async function detect(rootDirs) {
   const refs = [];
   for (const root of rootDirs) {
-    const entries = await readdirOrEmpty(root, { withFileTypes: true });
-    for (const ent of entries) {
-      if (!ent.isDirectory()) continue;
-      const projectDir = join(root, ent.name);
-      refs.push(...(await detectProject(projectDir)));
+    if (basename(root) === COWORK_STORE) {
+      for (const cowork of await coworkSessions(root)) {
+        for (const ref of await detectRoot(cowork.projectsDir)) {
+          ref.cowork = true;
+          if (cowork.title && ref.kind === 'session') ref.title = snippet(cowork.title, 100);
+          refs.push(ref);
+        }
+      }
+      continue;
     }
+    refs.push(...(await detectRoot(root)));
   }
   // runId tiebreak: same-mtime runs (a pinned fixture tree, a restore) must
   // still come back in one deterministic order.
@@ -59,6 +64,52 @@ export async function detect(rootDirs) {
           : 0,
   );
   return refs;
+}
+
+async function detectRoot(root) {
+  const refs = [];
+  for (const ent of await readdirOrEmpty(root, { withFileTypes: true })) {
+    if (!ent.isDirectory()) continue;
+    refs.push(...(await detectProject(join(root, ent.name))));
+  }
+  return refs;
+}
+
+/**
+ * Claude desktop's Cowork mode runs Claude Code inside a VM and keeps each
+ * session's ordinary Claude Code transcripts on the host at
+ *   local-agent-mode-sessions/<account>/<org>/local_<id>/.claude/projects/
+ * beside a `local_<id>.json` sidecar whose `title` is the name the desktop
+ * app shows. Layout seen on Claude desktop, 2026-10-13.
+ */
+export const COWORK_STORE = 'local-agent-mode-sessions';
+
+async function coworkSessions(store) {
+  const out = [];
+  for (const account of await readdirOrEmpty(store, { withFileTypes: true })) {
+    if (!account.isDirectory()) continue;
+    for (const org of await readdirOrEmpty(join(store, account.name), { withFileTypes: true })) {
+      if (!org.isDirectory()) continue;
+      const orgDir = join(store, account.name, org.name);
+      for (const ent of await readdirOrEmpty(orgDir, { withFileTypes: true })) {
+        if (!ent.isDirectory() || !ent.name.startsWith('local_')) continue;
+        const sidecar = safeParseJson(await readFileOrEmpty(join(orgDir, `${ent.name}.json`)));
+        out.push({
+          projectsDir: join(orgDir, ent.name, '.claude', 'projects'),
+          title: typeof sidecar?.title === 'string' ? sidecar.title : '',
+        });
+      }
+    }
+  }
+  return out;
+}
+
+async function readFileOrEmpty(path) {
+  try {
+    return await readFile(path, 'utf8');
+  } catch {
+    return '';
+  }
 }
 
 async function detectProject(projectDir) {
@@ -328,7 +379,9 @@ export function matchesProject(ref, resolvedPath) {
  *             copyCommand: string, forkCopyCommand: string }|null}
  */
 export function resumeInfo(ref) {
-  if (ref.kind !== 'session') return null;
+  // Cowork sessions live inside the desktop app's VM; `claude --resume` on
+  // the host cannot find them.
+  if (ref.kind !== 'session' || ref.cowork) return null;
   const argv = ['claude', '--resume', ref.sessionId];
   const forkArgv = [...argv, '--fork-session'];
   return {
