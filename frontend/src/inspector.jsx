@@ -2,6 +2,7 @@ import { createContext } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fetchDetail } from './api.js';
+import { prettyText } from './pretty.js';
 import { fmtTokens, fmtDuration } from './canvas.jsx';
 import { SIGNAL_GLYPHS } from './strip.jsx';
 import { adapterName, compactPath, filesIndex, rankedFocusNodes, relPath, signalsForNode } from './focus.js';
@@ -272,6 +273,37 @@ function Clipped({ text, class: cls }) {
  * over its text, and stay put while a long box scrolls. All three use the text
  * exactly as stored — whitespace and line breaks kept.
  */
+/**
+ * Open text in its own browser window: a blank page the dashboard fills in,
+ * so the address bar shows about:blank rather than a blob: URL. JSON is
+ * pretty-printed. The text goes in as textContent — shown, never run as
+ * HTML. Colours follow the dashboard's current theme. If the browser blocks
+ * the window, falls back to a plain-text blob in a new tab.
+ */
+function openTextWindow(value) {
+  const text = prettyText(value);
+  const win = window.open('', '_blank', 'popup,width=960,height=760');
+  if (!win) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return;
+  }
+  const css = getComputedStyle(document.documentElement);
+  const v = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
+  const doc = win.document;
+  doc.title = text === value ? 'rungraph · text' : 'rungraph · JSON';
+  const style = doc.createElement('style');
+  style.textContent = `
+    html, body { margin: 0; background: ${v('--bg', '#15171c')}; color: ${v('--ink', '#e7e9ee')}; }
+    pre { margin: 0; padding: 16px 20px; white-space: pre-wrap; overflow-wrap: anywhere;
+          font: 13px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }`;
+  doc.head.appendChild(style);
+  const pre = doc.createElement('pre');
+  pre.textContent = text;
+  doc.body.appendChild(pre);
+}
+
 function TextBox({ text, class: cls }) {
   const [state, setState] = useState(null); // null | 'ok' | 'failed'
   const [expanded, setExpanded] = useState(false);
@@ -286,13 +318,9 @@ function TextBox({ text, class: cls }) {
       () => setState('failed'),
     );
   };
-  // Plain text, never HTML: whatever the transcript holds is shown, not run.
   const breakOut = (e) => {
     e.stopPropagation();
-    const url = URL.createObjectURL(new Blob([value], { type: 'text/plain;charset=utf-8' }));
-    window.open(url, '_blank', 'popup,width=960,height=760');
-    // The new window has its own copy once loaded; free the blob after that.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    openTextWindow(value);
   };
   useEffect(() => {
     if (!expanded) return;
