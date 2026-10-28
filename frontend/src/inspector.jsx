@@ -3,6 +3,8 @@ import { createPortal } from 'preact/compat';
 import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fetchDetail, postReveal } from './api.js';
 import { prettyText } from './pretty.js';
+import { render } from 'preact';
+import { JsonView, JSON_VIEW_CSS, parseJsonBlock } from './json-view.jsx';
 import { useTextStyle } from './textstyle.js';
 import { Markdown, styledKind } from './markdown-view.jsx';
 import { fmtTokens, fmtDuration } from './canvas.jsx';
@@ -286,7 +288,8 @@ function Clipped({ text, class: cls }) {
  * HTML. Colours follow the dashboard's current theme. If the browser blocks
  * the window, falls back to a plain-text blob in a new tab.
  */
-function openTextWindow(value) {
+function openTextWindow(value, title) {
+  const json = parseJsonBlock(value);
   const text = prettyText(value);
   const win = window.open('', '_blank', 'popup,width=960,height=760');
   if (!win) {
@@ -296,18 +299,30 @@ function openTextWindow(value) {
     return;
   }
   const css = getComputedStyle(document.documentElement);
-  const v = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
+  // The dashboard's theme, carried over as the same custom properties.
+  const vars = ['--bg', '--ink', '--ink-dim', '--ink-faint', '--sage', '--amber', '--clay', '--hairline-soft', '--mono']
+    .map((n) => `${n}: ${css.getPropertyValue(n).trim()};`)
+    .join(' ');
   const doc = win.document;
-  doc.title = text === value ? 'rungraph · text' : 'rungraph · JSON';
+  doc.title = title ?? (json !== undefined ? 'rungraph · JSON' : 'rungraph · text');
   const style = doc.createElement('style');
   style.textContent = `
-    html, body { margin: 0; background: ${v('--bg', '#15171c')}; color: ${v('--ink', '#e7e9ee')}; }
-    pre { margin: 0; padding: 16px 20px; white-space: pre-wrap; overflow-wrap: anywhere;
-          font: 13px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }`;
+    :root { ${vars} }
+    html, body { margin: 0; background: var(--bg, #15171c); color: var(--ink, #e7e9ee); }
+    body { padding: 16px 20px; font: 13px/1.55 var(--mono, ui-monospace, Menlo, Consolas, monospace); }
+    pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+    ${JSON_VIEW_CSS}`;
   doc.head.appendChild(style);
-  const pre = doc.createElement('pre');
-  pre.textContent = text;
-  doc.body.appendChild(pre);
+  const root = doc.createElement('div');
+  doc.body.appendChild(root);
+  if (json !== undefined) {
+    // The JSON as a tree: strings with real line breaks, wrapped under their key.
+    render(<JsonView value={json} />, root);
+  } else {
+    const pre = doc.createElement('pre');
+    pre.textContent = text;
+    root.appendChild(pre);
+  }
 }
 
 function TextBox({ text, class: cls }) {
@@ -401,8 +416,12 @@ function TextBox({ text, class: cls }) {
       <div class={cls ? `md ${cls}` : 'md'} ref={ref}>
         <Markdown text={text} />
       </div>
+    ) : kind === 'json' ? (
+      <div class={cls ? `jv-box ${cls}` : 'jv-box'} ref={ref}>
+        <JsonView value={parseJsonBlock(text)} />
+      </div>
     ) : (
-      <pre class={cls} ref={ref}>{kind === 'json' ? prettyText(text) : text}</pre>
+      <pre class={cls} ref={ref}>{text}</pre>
     );
   return (
     <div class="text-box" data-styled={kind ?? undefined}>
@@ -875,14 +894,9 @@ function NodeJson({ graph, node, detail, runId }) {
     const edges = graph.edges.filter((e) => e.from === node.id || e.to === node.id);
     return JSON.stringify({ node, edges, detail: detail ?? null }, null, 2);
   };
-  // A real link, not window.open: the href is set to a fresh blob during
-  // the click, before the browser follows it, so it is never popup-blocked.
-  const view = (e) => {
-    const url = URL.createObjectURL(new Blob([text()], { type: 'application/json' }));
-    e.currentTarget.href = url;
-    // The new tab has its own copy once loaded; free the blob after that.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  };
+  // The node's JSON in its own window, drawn as a tree (prompts and other
+  // long strings with real line breaks, wrapped under their key).
+  const view = () => openTextWindow(text(), `rungraph · ${node.label ?? node.id}`);
   const copy = () =>
     navigator.clipboard?.writeText(text()).then(() => {
       setCopied(true);
@@ -891,9 +905,9 @@ function NodeJson({ graph, node, detail, runId }) {
   return (
     <div class="node-json">
       <div class="node-json-bar">
-        <a class="ghost" href="#" target="_blank" onClick={view} title="open this node's JSON in a new tab">
+        <button class="ghost" onClick={view} title="open this node's JSON in a new window">
           view JSON ↗
-        </a>
+        </button>
         <button class="ghost" onClick={copy}>{copied ? 'copied' : 'copy JSON'}</button>
         {!window.RUNGRAPH_EMBED && (
           <button
