@@ -1027,6 +1027,76 @@ button.ghost[data-on="true"] {
 .tool-call .head .err { color: var(--clay); }
 .inspector .node-json { margin-top: 10px; }
 .inspector .node-json-bar { display: flex; gap: 6px; }
+/* Copy / full screen / new window icons on each text box's top-right
+   corner. Faint until the box is hovered, like the row copy buttons. */
+.text-box { position: relative; }
+.text-box .box-tools {
+  position: absolute;
+  top: 10px;
+  right: 14px; /* clear of the box's scrollbar */
+  display: flex;
+  gap: 2px;
+  opacity: 0.45;
+  transition: opacity 100ms ease-out;
+}
+.text-box:hover .box-tools,
+.text-box .box-tools:focus-within { opacity: 1; }
+.text-box .box-tools button {
+  padding: 2px 5px;
+  font-family: var(--ui);
+  font-size: var(--fs-sm);
+  line-height: 1;
+  color: var(--ink-faint);
+  background: var(--bg);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.text-box .box-tools button:hover { color: var(--ink); background: var(--bg-raised); }
+/* Drag grip on each text box's bottom edge: invisible until hovered. It sits
+   over the box's 14px bottom margin, so it takes no extra room. */
+.text-box .box-grip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  height: 8px;
+  cursor: row-resize;
+  touch-action: none;
+  border-radius: 4px;
+  transition: background 120ms ease-out;
+}
+.text-box .box-grip:hover,
+:root[data-resizing="text-box"] .text-box .box-grip:active { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+:root[data-resizing="text-box"] { cursor: row-resize; user-select: none; -webkit-user-select: none; }
+/* Full screen: the box fills the window over everything else. */
+.text-box-full {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(2px);
+}
+.text-box-full .text-box { height: 100%; }
+.text-box-full pre {
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: var(--bg);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 7px;
+  padding: 14px 16px;
+  font-family: var(--mono);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+.text-box-full .box-tools { opacity: 1; top: 10px; right: 18px; }
 .inspector pre.error-text { color: var(--clay); border-color: var(--clay-dim); }
 .tool-call .head .ok { color: var(--sage); }
 .inspector .loading { color: var(--ink-faint); font-family: var(--mono); padding: 14px 0; }
