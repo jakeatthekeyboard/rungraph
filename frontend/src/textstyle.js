@@ -1,5 +1,5 @@
 // The header's "style" switch: when on, the inspector's text boxes render
-// Markdown and pretty-print complete JSON. Off by default; remembered per
+// Markdown and pretty-print complete JSON. On by default; remembered per
 // browser (storage can throw — the default still works). A tiny store so the
 // header and every text box agree without threading a prop through the pane.
 
@@ -10,13 +10,13 @@ const listeners = new Set();
 
 function read() {
   try {
-    return localStorage.getItem(KEY) === 'on';
+    return localStorage.getItem(KEY) !== 'off'; // on unless switched off
   } catch {
-    return false;
+    return true;
   }
 }
 
-let on = typeof window === 'undefined' ? false : read();
+let on = typeof window === 'undefined' ? true : read();
 
 export function textStyleOn() {
   return on;
