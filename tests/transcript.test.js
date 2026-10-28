@@ -48,6 +48,18 @@ describe('GET /api/transcript/<run>', () => {
     expect(codex.body.entries.some((e) => e.role === 'user')).toBe(true);
   });
 
+  it("an agent node's detail names its transcript file, relative to the project folder", async () => {
+    const graph = await (await fetch(`${server.url}/api/graph/${encodeURIComponent(SESSION_RUN_ID)}`)).json();
+    const agent = graph.nodes.find((n) => n.kind === 'agent');
+    const d = await (await fetch(`${server.url}/api/detail/${encodeURIComponent(agent.id)}?run=${encodeURIComponent(SESSION_RUN_ID)}`)).json();
+    expect(d.source.name).toMatch(/\.jsonl$/);
+    expect(d.source.path.startsWith('/')).toBe(false);
+    expect(d.source.path.endsWith(d.source.name)).toBe(true);
+    const turn = graph.nodes.find((n) => n.kind === 'turn');
+    const t = await (await fetch(`${server.url}/api/detail/${encodeURIComponent(turn.id)}?run=${encodeURIComponent(SESSION_RUN_ID)}`)).json();
+    expect(t.source).toBeUndefined();
+  });
+
   it('404s an unknown run', async () => {
     expect((await get('nope')).status).toBe(404);
   });
