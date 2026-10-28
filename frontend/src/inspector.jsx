@@ -1,4 +1,5 @@
 import { createContext } from 'preact';
+import { createPortal } from 'preact/compat';
 import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fetchDetail } from './api.js';
 import { fmtTokens, fmtDuration } from './canvas.jsx';
@@ -250,7 +251,7 @@ function Clipped({ text, class: cls }) {
   const m = typeof text === 'string' ? CLIPPED.exec(text) : null;
   return (
     <>
-      <pre class={cls}>{text}</pre>
+      <TextBox text={text} class={cls} />
       {m && !window.RUNGRAPH_EMBED && (
         <button class="ghost show-full" disabled={ctx.loading} onClick={ctx.show}>
           {ctx.loading
@@ -261,6 +262,111 @@ function Clipped({ text, class: cls }) {
         </button>
       )}
     </>
+  );
+}
+
+/**
+ * A text box with three icons on its top-right corner: copy, expand (the
+ * text fills the window; Esc or ✕ closes it) and break out (the text opens
+ * in a new browser window). The icons sit on a wrapper, not inside the
+ * <pre>, so they stay put while a long box scrolls. All three use the text
+ * exactly as stored — whitespace and line breaks kept.
+ */
+function TextBox({ text, class: cls }) {
+  const [state, setState] = useState(null); // null | 'ok' | 'failed'
+  const [expanded, setExpanded] = useState(false);
+  const value = String(text ?? '');
+  const copy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard?.writeText(value).then(
+      () => {
+        setState('ok');
+        setTimeout(() => setState(null), 1400);
+      },
+      () => setState('failed'),
+    );
+  };
+  // Plain text, never HTML: whatever the transcript holds is shown, not run.
+  const breakOut = (e) => {
+    e.stopPropagation();
+    const url = URL.createObjectURL(new Blob([value], { type: 'text/plain;charset=utf-8' }));
+    window.open(url, '_blank', 'popup,width=960,height=760');
+    // The new window has its own copy once loaded; free the blob after that.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setExpanded(false);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [expanded]);
+  const tools = (
+    <div class="box-tools">
+      <button type="button" onClick={copy} title={state === 'failed' ? 'copy failed' : 'copy this text'} aria-label="copy this text">
+        {state === 'ok' ? '✓' : '⧉'}
+      </button>
+      {expanded ? (
+        <button type="button" onClick={() => setExpanded(false)} title="close (Esc)" aria-label="close full screen">✕</button>
+      ) : (
+        <button type="button" onClick={() => setExpanded(true)} title="full screen" aria-label="show this text full screen">⤢</button>
+      )}
+      <button type="button" onClick={breakOut} title="open in a new window" aria-label="open this text in a new window">↗</button>
+    </div>
+  );
+  // The grip under the box: drag down to make it taller, up to make it
+  // shorter; double-click puts the 320px cap back. The height is a per-box
+  // inline max-height, so a box shorter than its cap never grows empty space.
+  const preRef = useRef(null);
+  const drag = useRef(null);
+  const onGripDown = (e) => {
+    if (e.button !== 0 || !preRef.current) return;
+    e.preventDefault();
+    drag.current = { startY: e.clientY, startH: preRef.current.getBoundingClientRect().height };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    document.documentElement.dataset.resizing = 'text-box';
+  };
+  const onGripMove = (e) => {
+    const d = drag.current;
+    if (!d || !preRef.current) return;
+    preRef.current.style.maxHeight = `${Math.max(60, Math.round(d.startH + (e.clientY - d.startY)))}px`;
+  };
+  const onGripEnd = () => {
+    if (!drag.current) return;
+    drag.current = null;
+    delete document.documentElement.dataset.resizing;
+  };
+  return (
+    <div class="text-box">
+      <pre class={cls} ref={preRef}>{text}</pre>
+      {tools}
+      <div
+        class="box-grip"
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="resize this text box"
+        title="drag to resize · double-click to reset"
+        onPointerDown={onGripDown}
+        onPointerMove={onGripMove}
+        onPointerUp={onGripEnd}
+        onPointerCancel={onGripEnd}
+        onLostPointerCapture={onGripEnd}
+        onDblClick={() => preRef.current?.style.removeProperty('max-height')}
+      />
+      {expanded &&
+        createPortal(
+          <div class="text-box-full" role="dialog" aria-modal="true" aria-label="text, full screen" onClick={() => setExpanded(false)}>
+            <div class="text-box" onClick={(e) => e.stopPropagation()}>
+              <pre class={cls}>{text}</pre>
+              {tools}
+            </div>
+          </div>,
+          document.body,
+        )}
+    </div>
   );
 }
 
@@ -814,7 +920,7 @@ function DetailBody({ detail, futureFrom = Infinity }) {
         </>
       );
     default:
-      return <pre>{JSON.stringify(detail, null, 2)}</pre>;
+      return <TextBox text={JSON.stringify(detail, null, 2)} />;
   }
 }
 
@@ -853,7 +959,7 @@ function EdgeDetail({ graph, edgeId, replay = null }) {
               <div class="microlabel section-label">
                 {edge.kind === 'spawn' ? 'prompt' : edge.kind === 'return' ? 'result' : 'label'}
               </div>
-              <pre>{edge.label}</pre>
+              <TextBox text={edge.label} />
             </>
           )}
         </>
