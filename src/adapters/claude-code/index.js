@@ -14,3 +14,4 @@ export {
 } from './detect.js';
 export { parse } from './parse.js';
 export { unrecognizedReport } from './diagnose.js';
+export { transcript } from './transcript.js';

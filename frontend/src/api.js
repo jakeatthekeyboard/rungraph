@@ -72,6 +72,13 @@ export async function fetchUnrecognized(runId) {
   return r.json();
 }
 
+/** The run's whole conversation for the "full transcript" window: { title, entries, source }. */
+export async function fetchTranscript(runId) {
+  const r = await fetch(`/api/transcript/${encodeURIComponent(runId)}`);
+  if (!r.ok) throw new Error(`transcript: ${r.status}`);
+  return r.json();
+}
+
 /**
  * Subscribe to live IR deltas. onMessage receives {type:'snapshot', graph},
  * {type:'delta', …} or {type:'focus', …} (an agent's answer, broadcast by
