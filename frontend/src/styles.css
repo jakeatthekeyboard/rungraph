@@ -1027,18 +1027,18 @@ button.ghost[data-on="true"] {
 .tool-call .head .err { color: var(--clay); }
 .inspector .node-json { margin-top: 10px; }
 .inspector .node-json-bar { display: flex; gap: 6px; }
-/* Copy / full screen / new window icons on each text box's top-right
-   corner. Faint until the box is hovered, like the row copy buttons. */
+/* Copy / full screen / new window icons in a row above each text box,
+   right-aligned. Faint until the box is hovered, like the row copy buttons. */
 .text-box { position: relative; }
 .text-box .box-tools {
-  position: absolute;
-  top: 10px;
-  right: 14px; /* clear of the box's scrollbar */
   display: flex;
+  justify-content: flex-end;
   gap: 2px;
+  margin: 2px 0 0;
   opacity: 0.45;
   transition: opacity 100ms ease-out;
 }
+.inspector .text-box > pre { margin-top: 3px; }
 .text-box:hover .box-tools,
 .text-box .box-tools:focus-within { opacity: 1; }
 .text-box .box-tools button {
@@ -1078,9 +1078,10 @@ button.ghost[data-on="true"] {
   background: color-mix(in srgb, var(--bg) 70%, transparent);
   backdrop-filter: blur(2px);
 }
-.text-box-full .text-box { height: 100%; }
+.text-box-full .text-box { height: 100%; display: flex; flex-direction: column; }
 .text-box-full pre {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   max-height: none;
   margin: 0;
   overflow-y: auto;
@@ -1096,7 +1097,7 @@ button.ghost[data-on="true"] {
   overflow-wrap: anywhere;
   color: var(--ink);
 }
-.text-box-full .box-tools { opacity: 1; top: 10px; right: 18px; }
+.text-box-full .box-tools { opacity: 1; margin: 0 0 6px; }
 .inspector pre.error-text { color: var(--clay); border-color: var(--clay-dim); }
 .tool-call .head .ok { color: var(--sage); }
 .inspector .loading { color: var(--ink-faint); font-family: var(--mono); padding: 14px 0; }
