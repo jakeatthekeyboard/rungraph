@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { createContext } from 'preact';
+import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fetchDetail } from './api.js';
 import { fmtTokens, fmtDuration } from './canvas.jsx';
 import { SIGNAL_GLYPHS } from './strip.jsx';
@@ -234,15 +235,44 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
  * (string / number / boolean values, a handful of keys) it renders as
  * key → value with strings shown raw; anything else falls back to the text.
  */
+// The marker every adapter's cap() leaves on shortened text.
+const CLIPPED = /\n… \((\d+) more chars\)$/;
+
+const ShowFull = createContext({ loading: false, failed: false, show: () => {} });
+
+/**
+ * A text box that knows when the adapter shortened it: the text ends in
+ * "… (N more chars)", and a button under it re-fetches this node's detail
+ * with no cap (GET /api/detail?full=1), which fills every box on the node.
+ */
+function Clipped({ text, class: cls }) {
+  const ctx = useContext(ShowFull);
+  const m = typeof text === 'string' ? CLIPPED.exec(text) : null;
+  return (
+    <>
+      <pre class={cls}>{text}</pre>
+      {m && !window.RUNGRAPH_EMBED && (
+        <button class="ghost show-full" disabled={ctx.loading} onClick={ctx.show}>
+          {ctx.loading
+            ? 'loading the full text…'
+            : ctx.failed
+              ? 'could not load the full text · retry'
+              : `show full · ${Number(m[1]).toLocaleString()} more chars`}
+        </button>
+      )}
+    </>
+  );
+}
+
 function CallInput({ text }) {
   const pairs = flatPairs(text);
-  if (!pairs) return <pre>{text}</pre>;
+  if (!pairs) return <Clipped text={text} />;
   return (
     <div class="call-input">
       {pairs.map(([k, v]) => (
         <div class="pair" key={k}>
           <span class="microlabel k">{k}</span>
-          <pre>{v}</pre>
+          <Clipped text={v} />
         </div>
       ))}
     </div>
@@ -437,6 +467,11 @@ function NodeDetail({
   const [detail, setDetail] = useState(null); // { key, stamp, data }
   const [failedFor, setFailedFor] = useState(null);
   const key = `${runId}\n${nodeId}`;
+  // "show full" was clicked for this node: fetch its detail uncapped, and keep
+  // doing so across live-tail re-fetches until another node is selected.
+  const [fullFor, setFullFor] = useState(null);
+  const [fullFailedFor, setFullFailedFor] = useState(null);
+  const wantFull = fullFor === key;
 
   // nodeStamp changes whenever a live-tail delta updates this node, so the
   // detail re-fetches instead of going stale mid-run.
@@ -464,12 +499,19 @@ function NodeDetail({
     const have = detailRef.current;
     // Pause on the node that is already loaded (or a drag that released where
     // it started) — nothing to fetch; the stale dim simply lifts.
-    if (have && have.key === key && have.stamp === nodeStamp) return;
+    if (have && have.key === key && have.stamp === nodeStamp && Boolean(have.full) === wantFull) return;
     let alive = true;
     const go = () =>
-      fetchDetail(runId, nodeId)
-        .then((d) => alive && setDetail({ key, stamp: nodeStamp, data: d }))
-        .catch(() => alive && setFailedFor(key));
+      fetchDetail(runId, nodeId, { full: wantFull })
+        .then((d) => alive && setDetail({ key, stamp: nodeStamp, full: wantFull, data: d }))
+        .catch(() => {
+          if (!alive) return;
+          // A failed "show full" falls back to the shortened text, not to nothing.
+          if (wantFull) {
+            setFullFailedFor(key);
+            setFullFor(null);
+          } else setFailedFor(key);
+        });
     // A rest back on the node it last rested on waits (see SETTLE_FETCH_MS);
     // a rest on a new node — a step, a marker click, a drag's release, a
     // click on the canvas, the end of a play — goes now.
@@ -480,7 +522,7 @@ function NodeDetail({
       alive = false;
       if (timer !== null) clearTimeout(timer);
     };
-  }, [runId, nodeId, nodeStamp, settled, ghost]);
+  }, [runId, nodeId, nodeStamp, settled, ghost, wantFull]);
   // Replay closed: a node change drops the old transcript at once, exactly as
   // today — the stale body is a replay affordance, not a general one.
   useEffect(() => {
@@ -608,7 +650,18 @@ function NodeDetail({
       {failed && <div class="loading">transcript unavailable</div>}
       {body && (
         <div class="detail-body" data-stale={String(stale)}>
-          <DetailBody detail={body} futureFrom={futureFrom} />
+          <ShowFull.Provider
+            value={{
+              loading: wantFull && !(detail?.key === key && detail?.full),
+              failed: fullFailedFor === key,
+              show: () => {
+                setFullFailedFor(null);
+                setFullFor(key);
+              },
+            }}
+          >
+            <DetailBody detail={body} futureFrom={futureFrom} />
+          </ShowFull.Provider>
         </div>
       )}
     </>
@@ -662,11 +715,11 @@ function DetailBody({ detail, futureFrom = Infinity }) {
       return (
         <>
           <div class="microlabel section-label">prompt</div>
-          <pre>{detail.prompt || '(empty)'}</pre>
+          <Clipped text={detail.prompt || '(empty)'} />
           {detail.responseText && (
             <>
               <div class="microlabel section-label">response</div>
-              <pre>{detail.responseText}</pre>
+              <Clipped text={detail.responseText} />
             </>
           )}
         </>
@@ -677,15 +730,15 @@ function DetailBody({ detail, futureFrom = Infinity }) {
           {detail.error && (
             <>
               <div class="microlabel section-label">error</div>
-              <pre class="error-text">{detail.error}</pre>
+              <Clipped text={detail.error} class="error-text" />
             </>
           )}
           <div class="microlabel section-label">prompt given</div>
-          <pre>{detail.prompt || '(unknown)'}</pre>
+          <Clipped text={detail.prompt || '(unknown)'} />
           {detail.result != null && (
             <>
               <div class="microlabel section-label">result</div>
-              <pre>{detail.result}</pre>
+              <Clipped text={detail.result} />
             </>
           )}
           {detail.transcript?.length > 0 && (
@@ -701,7 +754,7 @@ function DetailBody({ detail, futureFrom = Infinity }) {
                     {t.toolName ? ` · ${t.toolName}` : ''}
                   </div>
                   {isToolCall(t) && <div class="tool-used">Used the {t.toolName} tool</div>}
-                  <pre>{t.text}</pre>
+                  <Clipped text={t.text} />
                 </div>
               ))}
             </>
@@ -714,7 +767,7 @@ function DetailBody({ detail, futureFrom = Infinity }) {
           {detail.context && (
             <>
               <div class="microlabel section-label">why</div>
-              <pre>{detail.context}</pre>
+              <Clipped text={detail.context} />
             </>
           )}
           <div class="microlabel section-label">{detail.calls.length} call{detail.calls.length === 1 ? '' : 's'}</div>
@@ -727,7 +780,7 @@ function DetailBody({ detail, futureFrom = Infinity }) {
                 {c.durationMs != null && <span>{fmtDuration(c.durationMs)}</span>}
               </div>
               <CallInput text={c.input} />
-              {c.output && <pre>{c.output}</pre>}
+              {c.output && <Clipped text={c.output} />}
             </div>
           ))}
         </>
@@ -738,13 +791,13 @@ function DetailBody({ detail, futureFrom = Infinity }) {
           {detail.context && (
             <>
               <div class="microlabel section-label">context</div>
-              <pre>{detail.context}</pre>
+              <Clipped text={detail.context} />
             </>
           )}
           {detail.answer && (
             <>
               <div class="microlabel section-label">what the human did</div>
-              <pre>{detail.answer}</pre>
+              <Clipped text={detail.answer} />
             </>
           )}
         </>
@@ -755,7 +808,7 @@ function DetailBody({ detail, futureFrom = Infinity }) {
           {detail.returnValue != null && (
             <>
               <div class="microlabel section-label">return value</div>
-              <pre>{detail.returnValue}</pre>
+              <Clipped text={detail.returnValue} />
             </>
           )}
         </>

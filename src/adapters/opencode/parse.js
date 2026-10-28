@@ -16,6 +16,7 @@ import {
   selectList,
   tableColumns,
 } from './db.js';
+import { capsLifted } from '../../textcap.js';
 
 /**
  * opencode parser: rows in, IR out. Pure — no server imports, no I/O beyond
@@ -89,7 +90,7 @@ const safeStringify = (value, indent = 2) => {
 
 const cap = (text, max) => {
   if (typeof text !== 'string') return text == null ? '' : JSON.stringify(text).slice(0, max);
-  return text.length > max ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
+  return text.length > max && !capsLifted() ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
 };
 
 const TRUNCATION_NOTE =

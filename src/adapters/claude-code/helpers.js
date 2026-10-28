@@ -1,6 +1,7 @@
 /** Shared helpers for the claude-code adapter. Format knowledge only. */
 
 import { snippet } from '../../ir.js';
+import { capsLifted } from '../../textcap.js';
 
 /** Line types we understand in MAIN session files. Anything else → unrecognized. */
 export const KNOWN_MAIN_TYPES = new Set([
@@ -307,7 +308,7 @@ export class UsageTally {
 /** Cap a string for detail payloads (display artifacts, not data fidelity). */
 export function cap(text, max = 10000) {
   if (typeof text !== 'string') return text == null ? '' : JSON.stringify(text).slice(0, max);
-  return text.length > max ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
+  return text.length > max && !capsLifted() ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
 }
 
 /** Strip ANSI escape sequences (local_command output embeds them). */

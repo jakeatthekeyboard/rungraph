@@ -10,6 +10,7 @@ import { buildBundle, loadBundleFile, bundleRunEntry, defaultBundleName, default
 import { liveServers } from './registry.js';
 import { launchTerminal } from './launch.js';
 import { openFolder } from './open.js';
+import { withoutCaps } from './textcap.js';
 
 const DIST_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const HOST = '127.0.0.1'; // privacy: never bind anything else
@@ -178,7 +179,7 @@ async function handle(req, res, state) {
   if ((m = path.match(/^\/api\/find\/(.+)$/)))
     return apiFind(res, state, decodeURIComponent(m[1]), url.searchParams.get('q'));
   if ((m = path.match(/^\/api\/detail\/(.+)$/)))
-    return apiDetail(res, state, decodeURIComponent(m[1]), url.searchParams.get('run'));
+    return apiDetail(res, state, decodeURIComponent(m[1]), url.searchParams.get('run'), url.searchParams.get('full') === '1');
   if ((m = path.match(/^\/api\/locate\/(.+)$/)))
     return apiLocate(res, state, decodeURIComponent(m[1]));
   if ((m = path.match(/^\/api\/watch\/(.+)$/)))
@@ -542,8 +543,34 @@ function readJsonBody(req, max = MAX_BODY_BYTES) {
   });
 }
 
-async function apiDetail(res, state, nodeId, runId) {
+/**
+ * The run's detail payloads with no text cap — the inspector's "show full".
+ * A second parse of the run, on demand only; the last one is kept (keyed like
+ * the parse cache) so expanding several nodes of one run parses it once.
+ */
+async function loadFullDetails(state, runId) {
+  const ref = await resolveRun(state, runId);
+  if (!ref) return null;
+  const adapter = ADAPTERS.find((a) => a.name === ref.adapter);
+  const key = (await adapter.fingerprint?.(ref)) ?? `${ref.modifiedAt}:${ref.sizeBytes}`;
+  const hit = state.fullDetails;
+  if (hit && hit.runId === runId && hit.key === key) return hit.details;
+  const { details } = await withoutCaps(() => adapter.parse(ref, { collectDetails: true }));
+  state.fullDetails = { runId, key, details };
+  return details;
+}
+
+async function apiDetail(res, state, nodeId, runId, full = false) {
   if (!runId) return sendJson(res, 400, { error: 'missing ?run=<runId>' });
+  if (full) {
+    // A bundle carries the capped text only; the rest stayed on the sender's disk.
+    if (state.bundles) return sendJson(res, 409, { error: 'a bundle holds only the shortened text' });
+    const details = await loadFullDetails(state, runId);
+    if (!details) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
+    const detail = details.get(nodeId);
+    if (!detail) return sendJson(res, 404, { error: `no detail for node "${nodeId}"` });
+    return sendJson(res, 200, detail);
+  }
   const hit = await loadGraph(state, runId);
   if (!hit) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
   const detail = hit.details.get(nodeId);

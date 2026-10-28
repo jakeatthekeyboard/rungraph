@@ -14,6 +14,7 @@ import {
 import { bubbleRows, checkpoint, childrenByParent, composerRecord, hasKvTable } from './read.js';
 import { ideOutcome } from '../outcome.js';
 import { isPath, toolFamily, toolFiles, toolHint } from '../tools.js';
+import { capsLifted } from '../../../textcap.js';
 
 /**
  * Cursor IDE parser: a composer record + its header array + its bubble rows
@@ -70,7 +71,7 @@ const safeStringify = (value, indent = 2) => {
 
 export const cap = (text, max) => {
   if (typeof text !== 'string') return text == null ? '' : safeStringify(text).slice(0, max);
-  return text.length > max ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
+  return text.length > max && !capsLifted() ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
 };
 
 /** The headers array, or []. */
