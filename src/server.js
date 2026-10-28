@@ -442,7 +442,9 @@ async function apiResume(req, res, state) {
  * `what: 'transcripts'` is the folder holding its transcript (the session
  * .jsonl, or the store database for the SQLite adapters). `what: 'node'`
  * with a nodeId shows the file that node was read from, selected in its
- * folder (a subagent's own transcript, else the session file or database). Behind the same
+ * folder (a subagent's own transcript, else the session file or database).
+ * `what: 'agent'` with a nodeId shows the agent's definition .md selected
+ * (or answers { builtIn: true } for a type that has none). Behind the same
  * Origin and Host guards as /api/resume. The request names a run, never a
  * path: the directory is one the scan already holds for that run, and only a
  * directory that exists (and, for a project, is not loose) is opened.
@@ -464,13 +466,25 @@ async function apiReveal(req, res, state) {
   const runId = typeof body?.runId === 'string' ? body.runId : null;
   const what = body?.what ?? 'project';
   const nodeId = typeof body?.nodeId === 'string' ? body.nodeId : null;
-  if (!runId || !['project', 'transcripts', 'node'].includes(what) || (what === 'node' && !nodeId)) {
+  if (!runId || !['project', 'transcripts', 'node', 'agent'].includes(what) || ((what === 'node' || what === 'agent') && !nodeId)) {
     return sendJson(res, 400, {
-      error: "expected { runId: string, what?: 'project' | 'transcripts' | 'node', nodeId?: string }",
+      error: "expected { runId: string, what?: 'project' | 'transcripts' | 'node' | 'agent', nodeId?: string }",
     });
   }
   const ref = await resolveRun(state, runId);
   if (!ref) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
+  if (what === 'agent') {
+    // The agent's definition (.md), shown selected in its folder. A built-in
+    // type has no file; the answer says so instead of failing.
+    const { ir } = await parseCached(state, ref);
+    const node = ir.nodes.find((n) => n.id === nodeId);
+    if (!node) return sendJson(res, 404, { error: `no node "${nodeId}" in run "${runId}"` });
+    const adapter = ADAPTERS.find((a) => a.name === ref.adapter);
+    const def = (await adapter?.agentDefinition?.(ref, node)) ?? { agentType: null, file: null, builtIn: false };
+    if (!def.file) return sendJson(res, 200, { opened: false, ...def });
+    const opened = await state.revealFile(def.file);
+    return sendJson(res, 200, { opened, ...def });
+  }
   if (what === 'node') {
     // The file the node was read from, shown selected in its folder.
     const hit = await parseCached(state, ref);
@@ -671,7 +685,12 @@ async function withSource(state, runId, nodeId, detail) {
     if (typeof file !== 'string') return detail;
     const root = ref.projectDir ?? dirname(file);
     const rel = relative(root, file);
-    return { ...detail, source: { name: basename(file), path: rel.startsWith('..') ? file : rel, root } };
+    const def = node ? await adapter?.agentDefinition?.(ref, node).catch(() => null) : null;
+    return {
+      ...detail,
+      source: { name: basename(file), path: rel.startsWith('..') ? file : rel, root },
+      ...(def?.agentType ? { agentType: def.agentType, agentFile: def.file } : {}),
+    };
   } catch {
     return detail;
   }
