@@ -15,3 +15,4 @@ export {
 export { parse } from './parse.js';
 export { unrecognizedReport } from './diagnose.js';
 export { transcript } from './transcript.js';
+export { agentDefinition } from './agentdef.js';

@@ -814,6 +814,12 @@ function NodeDetail({
         {node.startedAt && (<><dt>started</dt><dd>{fmtTime(node.startedAt)}<CopyValue /></dd></>)}
         {/* An agent's own transcript file: its name, and its path from the
             project folder (title: the folder it is relative to). */}
+        {fresh?.agentType && (
+          <>
+            <dt>agent type</dt>
+            <dd title={fresh.agentFile ?? 'built in — no .md file'}>{fresh.agentType}<CopyValue /></dd>
+          </>
+        )}
         {fresh?.source && (
           <>
             <dt>file</dt>
@@ -905,6 +911,14 @@ function NodeJson({ graph, node, detail, runId }) {
   const [shown, setShown] = useState(null); // null | 'ok' | 'failed'
   // The transcript file this node was read from, selected in Finder / File
   // Explorer. The server resolves the file from the run and node ids.
+  const [agentShown, setAgentShown] = useState(null); // null | label to flash
+  // The agent's definition .md selected in Finder / File Explorer; a
+  // built-in type has none, and the button says so.
+  const showAgent = () =>
+    postReveal(runId, 'agent', node.id)
+      .then((r) => setAgentShown(r.opened ? 'shown' : r.builtIn ? `built in: ${r.agentType}` : r.agentType ? 'no .md found' : 'no agent type'))
+      .catch(() => setAgentShown('no .md found'))
+      .finally(() => setTimeout(() => setAgentShown(null), 2400));
   const showFile = () =>
     postReveal(runId, 'node', node.id)
       .then((r) => setShown(r.opened ? 'ok' : 'failed'))
@@ -933,9 +947,18 @@ function NodeJson({ graph, node, detail, runId }) {
           <button
             class="ghost"
             onClick={showFile}
-            title="show the .jsonl this node was read from in Finder / File Explorer"
+            title="show the .jsonl log this node was read from in Finder / File Explorer"
           >
-            {shown === 'ok' ? 'shown' : shown === 'failed' ? 'no file here' : 'show file'}
+            {shown === 'ok' ? 'shown' : shown === 'failed' ? 'no log file here' : 'show log file'}
+          </button>
+        )}
+        {!window.RUNGRAPH_EMBED && node.kind === 'agent' && (
+          <button
+            class="ghost"
+            onClick={showAgent}
+            title="show this agent's definition (.md) in Finder / File Explorer"
+          >
+            {agentShown ?? 'show agent'}
           </button>
         )}
       </div>
