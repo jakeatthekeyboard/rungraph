@@ -8,6 +8,7 @@ import { ExportDialog } from './export.jsx';
 import { ResumePopover } from './resume.jsx';
 import { pickerWidth, restorePickerWidth, setPickerWidth } from './panel-width.js';
 import { FONT_SIZES, setFontSize, setTheme, storedFontSize, storedTheme } from './theme.js';
+import { setTextStyle, useTextStyle } from './textstyle.js';
 import {
   safeTimeline,
   cursorOf,
@@ -69,6 +70,7 @@ const embedNarrow = () =>
 export function App() {
   const [index, setIndex] = useState(null);
   const [theme, setThemeState] = useState(storedTheme);
+  const styleText = useTextStyle();
   const [fontSize, setFontSizeState] = useState(storedFontSize);
   // A deep link (#run=…&sel=…&f=…) wins over the plain ?run= param: the hash
   // carries focus state the search param cannot.
@@ -1051,6 +1053,15 @@ export function App() {
             {follow ? 'following' : 'follow'}
           </button>
         )}
+        <button
+          class="ghost"
+          data-on={String(styleText)}
+          onClick={() => setTextStyle(!styleText)}
+          title={styleText ? 'text boxes: Markdown rendered, JSON pretty-printed — click for raw text' : 'text boxes: raw text — click to render Markdown and pretty-print JSON'}
+          aria-pressed={String(styleText)}
+        >
+          style
+        </button>
         <select
           class="font-size-select"
           value={fontSize}

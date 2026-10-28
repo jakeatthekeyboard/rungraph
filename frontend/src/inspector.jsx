@@ -3,6 +3,8 @@ import { createPortal } from 'preact/compat';
 import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fetchDetail } from './api.js';
 import { prettyText } from './pretty.js';
+import { useTextStyle } from './textstyle.js';
+import { Markdown, styledKind } from './markdown-view.jsx';
 import { fmtTokens, fmtDuration } from './canvas.jsx';
 import { SIGNAL_GLYPHS } from './strip.jsx';
 import { adapterName, compactPath, filesIndex, rankedFocusNodes, relPath, signalsForNode } from './focus.js';
@@ -367,10 +369,23 @@ function TextBox({ text, class: cls }) {
     drag.current = null;
     delete document.documentElement.dataset.resizing;
   };
+  // The header's "style" switch: complete JSON pretty-printed, Markdown
+  // rendered, anything else as stored. Copy and new window always use the
+  // stored text (the new window pretty-prints JSON on its own).
+  const styleOn = useTextStyle();
+  const kind = styleOn ? styledKind(text) : null;
+  const body = (ref) =>
+    kind === 'markdown' ? (
+      <div class={cls ? `md ${cls}` : 'md'} ref={ref}>
+        <Markdown text={text} />
+      </div>
+    ) : (
+      <pre class={cls} ref={ref}>{kind === 'json' ? prettyText(text) : text}</pre>
+    );
   return (
-    <div class="text-box">
+    <div class="text-box" data-styled={kind ?? undefined}>
       {tools}
-      <pre class={cls} ref={preRef}>{text}</pre>
+      {body(preRef)}
       <div
         class="box-grip"
         role="separator"
@@ -389,7 +404,7 @@ function TextBox({ text, class: cls }) {
           <div class="text-box-full" role="dialog" aria-modal="true" aria-label="text, full screen" onClick={() => setExpanded(false)}>
             <div class="text-box" onClick={(e) => e.stopPropagation()}>
               {tools}
-              <pre class={cls}>{text}</pre>
+              {body(null)}
             </div>
           </div>,
           document.body,
