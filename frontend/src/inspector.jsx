@@ -5,6 +5,7 @@ import { fetchDetail, postReveal } from './api.js';
 import { prettyText } from './pretty.js';
 import { render } from 'preact';
 import { JsonView, JSON_VIEW_CSS, parseJsonBlock } from './json-view.jsx';
+import { openTranscriptWindow } from './transcript-view.jsx';
 import { useTextStyle } from './textstyle.js';
 import { Markdown, styledKind } from './markdown-view.jsx';
 import { fmtTokens, fmtDuration } from './canvas.jsx';
@@ -124,6 +125,15 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
     <>
       <div class="microlabel">this run</div>
       <h2>{graph.meta?.title || '(untitled)'}<CopyValue /></h2>
+      {!window.RUNGRAPH_EMBED && graph.meta?.runId && (
+        <button
+          class="ghost full-transcript"
+          onClick={() => openTranscriptWindow(graph.meta.runId, graph.meta?.title)}
+          title="the whole conversation, top to bottom, in a new window"
+        >
+          full transcript ↗
+        </button>
+      )}
       {/* The one line that names the moment. Without it a pane listing one
           signal and three files reads as "this run is quiet" — the same
           silence-means-clean trap the coverage badge exists for, now in time. */}

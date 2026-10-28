@@ -83,3 +83,8 @@ export async function postReveal(runId, what, nodeId) {
 export async function fetchUnrecognized(runId) {
   throw new Error('unrecognized: not available in the embed');
 }
+
+/** Unreachable in the embed: the "full transcript" button is not rendered there. */
+export async function fetchTranscript(runId) {
+  throw new Error('transcript: not available in the embed');
+}
