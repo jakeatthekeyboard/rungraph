@@ -1209,6 +1209,13 @@ button.ghost[data-on="true"] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Files touched: full paths. The list scrolls sideways as one block, and
+   is capped in height so its sideways scrollbar is always in reach; the
+   inner box is as wide as the longest path (and at least the pane), so the
+   counts stay in one column. */
+.inspector .files-scroll { overflow: auto; max-height: 360px; }
+.inspector .files-inner { width: max-content; min-width: 100%; }
+.inspector .files-scroll .row .grow { overflow: visible; text-overflow: clip; }
 .inspector .row .glyph { flex: none; color: var(--ink-faint); }
 .inspector .row .n { flex: none; color: var(--ink-faint); }
 .inspector .row .n.err { color: var(--clay); }

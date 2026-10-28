@@ -7,7 +7,7 @@ import { useTextStyle } from './textstyle.js';
 import { Markdown, styledKind } from './markdown-view.jsx';
 import { fmtTokens, fmtDuration } from './canvas.jsx';
 import { SIGNAL_GLYPHS } from './strip.jsx';
-import { adapterName, compactPath, filesIndex, rankedFocusNodes, relPath, signalsForNode } from './focus.js';
+import { adapterName, filesIndex, rankedFocusNodes, signalsForNode } from './focus.js';
 import { firstFutureCall } from './replay.js';
 import { suggestQuestions } from './suggest.js';
 import { inspectorWidth, restoreInspectorWidth, setInspectorWidth } from './panel-width.js';
@@ -209,7 +209,10 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
       {files.length > 0 && (
         <>
           <div class="microlabel section-label">files touched</div>
-          <div class="rows">
+          {/* Full paths, never shortened: the list scrolls sideways as one
+              block when a path is wider than the pane. */}
+          <div class="rows files-scroll">
+            <div class="files-inner">
             {files.map((f) => (
               <button
                 class="row"
@@ -218,10 +221,11 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
                 onClick={() => onFocusFile?.(f.path)}
                 title={f.path}
               >
-                <span class="grow">{compactPath(relPath(f.path, project))}</span>
+                <span class="grow">{f.path}</span>
                 <span class="n">{f.count}</span>
               </button>
             ))}
+            </div>
           </div>
         </>
       )}
@@ -779,12 +783,14 @@ function NodeDetail({
           <div class="microlabel section-label">
             {node.files.length} file{node.files.length === 1 ? '' : 's'} touched
           </div>
-          <div class="rows">
-            {node.files.map((f) => (
-              <button class="row" key={f} onClick={() => onFocusFile?.(f)} title={f}>
-                <span class="grow">{compactPath(relPath(f, project))}</span>
-              </button>
-            ))}
+          <div class="rows files-scroll">
+            <div class="files-inner">
+              {node.files.map((f) => (
+                <button class="row" key={f} onClick={() => onFocusFile?.(f)} title={f}>
+                  <span class="grow">{f}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </>
       )}
