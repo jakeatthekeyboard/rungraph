@@ -1081,6 +1081,23 @@ button.ghost[data-on="true"] {
 :root[data-resizing="text-box"] .text-box .box-grip:active::after {
   background: var(--accent);
 }
+/* By the grip, at the box's bottom-right: grow to the whole text / shrink back. */
+.text-box .box-fit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 0 5px;
+  font-family: var(--ui);
+  font-size: var(--fs-sm);
+  line-height: 15px;
+  color: var(--ink-faint);
+  background: var(--bg);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.text-box .box-fit:hover { color: var(--ink); background: var(--bg-raised); }
 :root[data-resizing="text-box"] { cursor: row-resize; user-select: none; -webkit-user-select: none; }
 /* Full screen: the box fills the window over everything else. */
 .text-box-full {

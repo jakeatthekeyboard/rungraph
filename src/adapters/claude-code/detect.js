@@ -364,6 +364,22 @@ export function matchesProject(ref, resolvedPath) {
 }
 
 /**
+ * The transcript file a node was read from, for "show file". An agent node
+ * has its own transcript — `<session>/subagents/agent-<id>.jsonl`, or
+ * `<wfDir>/agent-<id>.jsonl` inside a workflow run — when that file exists;
+ * every other node comes from the session file (a workflow run's own nodes
+ * from its journal).
+ */
+export async function sourceFile(ref, node) {
+  if (node?.kind === 'agent' && typeof node.agentId === 'string' && /^[\w-]+$/.test(node.agentId)) {
+    const dir = ref.kind === 'workflow' ? ref.wfDir : join(ref.projectDir, ref.sessionId, 'subagents');
+    const file = dir ? join(dir, `agent-${node.agentId}.jsonl`) : null;
+    if (file && (await statOrNull(file))) return file;
+  }
+  return ref.kind === 'workflow' ? (ref.journalFile ?? ref.sessionFile) : ref.sessionFile;
+}
+
+/**
  * How to continue this session in a real terminal. Pure string construction
  * from the RunRef — the existence probe behind `projectExists` already ran in
  * detect(), where the I/O lives.

@@ -9,7 +9,7 @@ import { matchNodes } from './find.js';
 import { buildBundle, loadBundleFile, bundleRunEntry, defaultBundleName, defaultSharedBy } from './bundle.js';
 import { liveServers } from './registry.js';
 import { launchTerminal } from './launch.js';
-import { openFolder } from './open.js';
+import { openFolder, revealFile } from './open.js';
 import { withoutCaps } from './textcap.js';
 
 const DIST_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
@@ -46,7 +46,8 @@ const MIME = {
  *
  * @param {{ preferredPort?: number, project?: string, bundles?: string[],
  *           launch?: (argv: string[], cwd: string|null) => Promise<boolean>,
- *           openFolder?: (dir: string) => Promise<boolean> }} opts
+ *           openFolder?: (dir: string) => Promise<boolean>,
+ *           revealFile?: (file: string) => Promise<boolean> }} opts
  * @returns {Promise<{ url: string, port: number, close: () => Promise<void> }>}
  */
 export async function startServer(opts = {}) {
@@ -56,6 +57,8 @@ export async function startServer(opts = {}) {
     launch: opts.launch ?? launchTerminal,
     // Injectable for tests; the real one opens Finder / File Explorer.
     openFolder: opts.openFolder ?? openFolder,
+    // Injectable for tests; the real one shows the file selected in its folder.
+    revealFile: opts.revealFile ?? revealFile,
     // runId → { key, ir, details } — parse cache, invalidated by mtime key.
     parseCache: new Map(),
     // runId → { watcher, clients: Set<res>, lastIR }
@@ -431,7 +434,9 @@ async function apiResume(req, res, state) {
  * Open one of a run's folders in the OS file manager — the picker's folder
  * buttons. `what: 'project'` (the default) is the project the run worked in;
  * `what: 'transcripts'` is the folder holding its transcript (the session
- * .jsonl, or the store database for the SQLite adapters). Behind the same
+ * .jsonl, or the store database for the SQLite adapters). `what: 'node'`
+ * with a nodeId shows the file that node was read from, selected in its
+ * folder (a subagent's own transcript, else the session file or database). Behind the same
  * Origin and Host guards as /api/resume. The request names a run, never a
  * path: the directory is one the scan already holds for that run, and only a
  * directory that exists (and, for a project, is not loose) is opened.
@@ -452,11 +457,26 @@ async function apiReveal(req, res, state) {
   }
   const runId = typeof body?.runId === 'string' ? body.runId : null;
   const what = body?.what ?? 'project';
-  if (!runId || (what !== 'project' && what !== 'transcripts')) {
-    return sendJson(res, 400, { error: "expected { runId: string, what?: 'project' | 'transcripts' }" });
+  const nodeId = typeof body?.nodeId === 'string' ? body.nodeId : null;
+  if (!runId || !['project', 'transcripts', 'node'].includes(what) || (what === 'node' && !nodeId)) {
+    return sendJson(res, 400, {
+      error: "expected { runId: string, what?: 'project' | 'transcripts' | 'node', nodeId?: string }",
+    });
   }
   const ref = await resolveRun(state, runId);
   if (!ref) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
+  if (what === 'node') {
+    // The file the node was read from, shown selected in its folder.
+    const hit = await parseCached(state, ref);
+    const node = hit.ir.nodes.find((n) => n.id === nodeId);
+    if (!node) return sendJson(res, 404, { error: `no node "${nodeId}" in run "${runId}"` });
+    const adapter = ADAPTERS.find((a) => a.name === ref.adapter);
+    const file = (await adapter?.sourceFile?.(ref, node)) ?? ref.sessionFile ?? ref.dbPath ?? null;
+    const isFile = file ? await stat(file).then((st) => st.isFile(), () => false) : false;
+    if (!isFile) return sendJson(res, 400, { error: `node "${nodeId}" has no transcript file on this machine` });
+    const opened = await state.revealFile(file);
+    return sendJson(res, 200, { opened, file });
+  }
   let dir;
   if (what === 'project') {
     if (toIndexEntry(ref).loose) {

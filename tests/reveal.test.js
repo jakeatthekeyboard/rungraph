@@ -17,6 +17,7 @@ describe('POST /api/reveal', () => {
   let projDir;
   let server;
   const opened = [];
+  const revealed = [];
   let openResult = true;
   const runId = (dir, sid) => `claude-code:${dir}:${sid}`;
 
@@ -44,6 +45,10 @@ describe('POST /api/reveal', () => {
       openFolder: async (dir) => {
         opened.push(dir);
         return openResult;
+      },
+      revealFile: async (file) => {
+        revealed.push(file);
+        return true;
       },
     });
   });
@@ -109,6 +114,22 @@ describe('POST /api/reveal', () => {
     const before = opened.length;
     expect((await post({ runId: runId('-proj-with-space', REAL_SID), what: '/etc' })).status).toBe(400);
     expect(opened.length).toBe(before);
+  });
+
+  it("what: node shows the session .jsonl a turn node came from", async () => {
+    const graph = await (await fetch(server.url + `/api/graph/${encodeURIComponent(runId('-proj-with-space', REAL_SID))}`)).json();
+    const node = graph.nodes.find((n) => n.kind === 'turn');
+    const { status, body } = await post({ runId: runId('-proj-with-space', REAL_SID), what: 'node', nodeId: node.id });
+    expect(status).toBe(200);
+    expect(body.opened).toBe(true);
+    expect(revealed.at(-1)).toBe(join(tmp, 'projects', '-proj-with-space', `${REAL_SID}.jsonl`));
+  });
+
+  it('what: node needs a nodeId and a node that exists', async () => {
+    const before = revealed.length;
+    expect((await post({ runId: runId('-proj-with-space', REAL_SID), what: 'node' })).status).toBe(400);
+    expect((await post({ runId: runId('-proj-with-space', REAL_SID), what: 'node', nodeId: 'nope' })).status).toBe(404);
+    expect(revealed.length).toBe(before);
   });
 
   it('404s an unknown run and 400s a missing runId', async () => {
