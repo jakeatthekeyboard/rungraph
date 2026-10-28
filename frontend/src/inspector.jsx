@@ -284,12 +284,12 @@ const ShowFull = createContext({ loading: false, failed: false, show: () => {} }
  * "… (N more chars)", and a button under it re-fetches this node's detail
  * with no cap (GET /api/detail?full=1), which fills every box on the node.
  */
-function Clipped({ text, class: cls }) {
+function Clipped({ text, class: cls, source }) {
   const ctx = useContext(ShowFull);
   const m = typeof text === 'string' ? CLIPPED.exec(text) : null;
   return (
     <>
-      <TextBox text={text} class={cls} />
+      <TextBox text={text} class={cls} source={source} />
       {m && !window.RUNGRAPH_EMBED && (
         <button class="ghost show-full" disabled={ctx.loading} onClick={ctx.show}>
           {ctx.loading
@@ -354,7 +354,7 @@ function openTextWindow(value, title) {
   }
 }
 
-function TextBox({ text, class: cls }) {
+function TextBox({ text, class: cls, source }) {
   const [state, setState] = useState(null); // null | 'ok' | 'failed'
   const [expanded, setExpanded] = useState(false);
   const value = String(text ?? '');
@@ -393,6 +393,18 @@ function TextBox({ text, class: cls }) {
         <button type="button" onClick={() => setExpanded(true)} title="full screen" aria-label="show this text full screen">⤢</button>
       )}
       <button type="button" onClick={breakOut} title="open in a new window" aria-label="open this text in a new window">↗</button>
+      {source && (
+        <button
+          type="button"
+          class="src"
+          onClick={source.onClick ?? undefined}
+          disabled={!source.onClick}
+          title={source.title}
+          aria-label={source.title}
+        >
+          {source.label}
+        </button>
+      )}
     </div>
   );
   // The grip under the box: drag down to make it taller, up to make it
@@ -497,6 +509,24 @@ function TextBox({ text, class: cls }) {
   );
 }
 
+// Reveal a definition file the selected node ran from (agent .md / SKILL.md),
+// for the buttons on its text boxes. Provided by NodeDetail.
+const Reveal = createContext(null);
+
+/** The button a text box carries for its source definition file. */
+function useDefinitionSource(kind, name) {
+  const reveal = useContext(Reveal);
+  if (!reveal) return null;
+  const def = kind === 'agent' ? reveal.node.definitions?.agent : reveal.node.definitions?.skills?.find((s) => s.name === name);
+  if (!def) return null;
+  const file = def.file;
+  return {
+    label: file ? file.split(/[\\/]/).pop() : 'built in',
+    title: file ? `show ${file} in Finder / File Explorer` : `${kind === 'agent' ? def.type : def.name} is built in — no file on disk`,
+    onClick: file ? () => reveal.show(kind, name) : null,
+  };
+}
+
 const Sections = createContext({ open: true, flip: new Set(), toggle: () => {} });
 
 /**
@@ -524,9 +554,48 @@ function Section({ id, label, cls, children }) {
   );
 }
 
+/** An agent's prompt box, with a button to the agent's .md. */
+function AgentPrompt({ text }) {
+  return <Clipped text={text} source={useDefinitionSource('agent')} />;
+}
+
+/** A Skill call recorded in an agent's transcript, with a button to its SKILL.md. */
+function SkillInput({ text }) {
+  let name = null;
+  try {
+    name = JSON.parse(text)?.skill ?? null;
+  } catch {
+    name = null;
+  }
+  return <Clipped text={text} source={useDefinitionSource('skill', name)} />;
+}
+
+/** One definition-file row: the file name (or "built in"), a reveal button, the full path on hover. */
+function DefRow({ label, def, name, onShow }) {
+  const file = def.file;
+  return (
+    <>
+      <dt>{label}</dt>
+      <dd title={file ?? `${name} is built in — no file on disk`}>
+        {file ? file.split(/[\\/]/).slice(-2).join('/') : `${name} · built in`}
+        {file && (
+          <button class="copy-value reveal-def" onClick={onShow} title={`show ${file} in Finder / File Explorer`}>
+            ⇱
+          </button>
+        )}
+        <CopyValue />
+      </dd>
+    </>
+  );
+}
+
 function CallInput({ text }) {
   const pairs = flatPairs(text);
+  // A Skill call's input names its skill: the box carries a button to its SKILL.md.
+  const skill = pairs?.find(([k]) => k === 'skill')?.[1];
+  const source = useDefinitionSource('skill', skill);
   if (!pairs) return <Clipped text={text} />;
+  if (skill && source) return <Clipped text={text} source={source} />;
   return (
     <div class="call-input">
       {pairs.map(([k, v]) => (
@@ -861,17 +930,34 @@ function NodeDetail({
         {node.startedAt && (<><dt>started</dt><dd>{fmtTime(node.startedAt)}<CopyValue /></dd></>)}
         {/* An agent's own transcript file: its name, and its path from the
             project folder (title: the folder it is relative to). */}
-        {fresh?.agentType && (
-          <>
-            <dt>agent type</dt>
-            <dd title={fresh.agentFile ?? 'built in — no .md file'}>{fresh.agentType}<CopyValue /></dd>
-          </>
+        {/* The files this node ran from: its definition (agent .md /
+            SKILL.md) and its log (.jsonl), each with a reveal button. */}
+        {node.definitions?.agent && (
+          <DefRow
+            label="agent file"
+            def={node.definitions.agent}
+            name={node.definitions.agent.type}
+            onShow={() => postReveal(runId, 'agent', node.id).catch(() => {})}
+          />
         )}
+        {node.definitions?.skills?.map((sk) => (
+          <DefRow
+            key={sk.name}
+            label="skill file"
+            def={sk}
+            name={sk.name}
+            onShow={() => postReveal(runId, 'skill', node.id, { skill: sk.name }).catch(() => {})}
+          />
+        ))}
         {fresh?.source && (
           <>
-            <dt>file</dt>
-            <dd>{fresh.source.name}<CopyValue /></dd>
-            <dt>path</dt>
+            <dt>log file</dt>
+            <dd title={fresh.source.root ? `${fresh.source.root}/${fresh.source.path}` : fresh.source.path}>
+              {fresh.source.name}
+              <button class="copy-value reveal-def" onClick={() => postReveal(runId, 'node', node.id).catch(() => {})} title="show in Finder / File Explorer">⇱</button>
+              <CopyValue />
+            </dd>
+            <dt>log path</dt>
             <dd title={fresh.source.root}>{fresh.source.path}<CopyValue /></dd>
           </>
         )}
@@ -935,7 +1021,14 @@ function NodeDetail({
               },
             }}
           >
-            <DetailBody detail={body} futureFrom={futureFrom} />
+            <Reveal.Provider
+              value={{
+                node,
+                show: (kind, name) => postReveal(runId, kind, node.id, kind === 'skill' ? { skill: name } : {}).catch(() => {}),
+              }}
+            >
+              <DetailBody detail={body} futureFrom={futureFrom} />
+            </Reveal.Provider>
           </ShowFull.Provider>
         </div>
       )}
@@ -1037,7 +1130,7 @@ function DetailBody({ detail, futureFrom = Infinity }) {
             </Section>
           )}
           <Section id="prompt-given" label="prompt given">
-            <Clipped text={detail.prompt || '(unknown)'} />
+            <AgentPrompt text={detail.prompt || '(unknown)'} />
           </Section>
           {detail.result != null && (
             <Section id="result" label="result">
@@ -1054,7 +1147,7 @@ function DetailBody({ detail, futureFrom = Infinity }) {
                     {t.toolName ? ` · ${t.toolName}` : ''}
                   </div>
                   {isToolCall(t) && <div class="tool-used">Used the {t.toolName} tool</div>}
-                  <Clipped text={t.text} />
+                  {t.toolName === 'Skill' ? <SkillInput text={t.text} /> : <Clipped text={t.text} />}
                 </div>
               ))}
             </Section>

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { memo } from 'preact/compat';
 import { layoutGraph, edgePath } from './layout.js';
 import { fetchUnrecognized } from './api.js';
+import { definitionLine } from '../../src/definitions.js';
 import { inspectorWidth, inspectorWidthSetting, pickerWidthSetting } from './panel-width.js';
 import { badgedNodeIds, nodeMarks } from './focus.js';
 import { replayLabel } from './replay.js';
@@ -958,6 +959,7 @@ const NodeView = memo(function NodeView({ node, pos, order, selected, focused, d
   // appears when the end does; the label counts up (`×k`) as its calls land.
   const midFlight = shownStatus === 'running' && node.status !== 'running';
   const meta = nodeMeta(node, midFlight);
+  const defLine = definitionLine(node);
   const clip = `clip-${node.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
   return (
     <g
@@ -992,9 +994,14 @@ const NodeView = memo(function NodeView({ node, pos, order, selected, focused, d
           {node.kind === 'human' ? node.interventionKind ?? 'human' : KIND_TAGS[node.kind]}
           {node.kind === 'workflow' ? '  ⌄ drill in' : ''}
         </text>
-        <text class="label" x="12" y={meta ? pos.h - 22 : pos.h / 2 + 9}>{replayLabel(node, callsShown)}</text>
+        {/* Bottom-up: the definition file (agent .md / SKILL.md) when there
+            is one, then the meta line, then the label. */}
+        <text class="label" x="12" y={meta ? pos.h - 22 - (defLine ? 14 : 0) : defLine ? pos.h - 22 : pos.h / 2 + 9}>{replayLabel(node, callsShown)}</text>
         {meta && (
-          <text class="meta" x="12" y={pos.h - 8}>{meta}</text>
+          <text class="meta" x="12" y={pos.h - 8 - (defLine ? 14 : 0)}>{meta}</text>
+        )}
+        {defLine && (
+          <text class="meta deffile" x="12" y={pos.h - 8}>{defLine}</text>
         )}
       </g>
       {/* `high` signals only. In a large session the biggest node is usually
