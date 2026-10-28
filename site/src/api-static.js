@@ -78,3 +78,8 @@ export async function postResume(runId, fork) {
 export async function postReveal(runId, what, nodeId) {
   return { opened: false };
 }
+
+/** Unreachable in the embed (the banner's details need the transcript files). */
+export async function fetchUnrecognized(runId) {
+  throw new Error('unrecognized: not available in the embed');
+}

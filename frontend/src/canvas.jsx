@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 // preact/compat is inside the preact package already — no new dependency.
 import { memo } from 'preact/compat';
 import { layoutGraph, edgePath } from './layout.js';
+import { fetchUnrecognized } from './api.js';
 import { inspectorWidth, inspectorWidthSetting, pickerWidthSetting } from './panel-width.js';
 import { badgedNodeIds, nodeMarks } from './focus.js';
 import { replayLabel } from './replay.js';
@@ -81,6 +82,22 @@ export function Canvas({
   // dismiss. Session-only — the never-blank-screen rule wants degradation
   // surfaced, so a reload starts honest again.
   const [noticeDismissedFor, setNoticeDismissedFor] = useState(null);
+  // The banner's "details": the skipped-records report for one run, fetched
+  // when opened. { runId, text?, total?, groups?, error?, copied? } | null.
+  const [unrec, setUnrec] = useState(null);
+  useEffect(() => {
+    const onAsk = (e) => toggleUnrecRef.current(e.detail);
+    window.addEventListener('rungraph:unrecognized-details', onAsk);
+    return () => window.removeEventListener('rungraph:unrecognized-details', onAsk);
+  }, []);
+  const toggleUnrecRef = useRef(null);
+  const toggleUnrec = (toggleUnrecRef.current = (runId) => {
+    if (unrec?.runId === runId) return setUnrec(null);
+    setUnrec({ runId });
+    fetchUnrecognized(runId)
+      .then((r) => setUnrec((u) => (u?.runId === runId ? { runId, text: r.text, total: r.total, groups: r.groups.length } : u)))
+      .catch((err) => setUnrec((u) => (u?.runId === runId ? { runId, error: String(err?.message ?? err) } : u)));
+  });
   const [view, setView] = useState({ tx: 40, ty: 30, scale: 1 });
   // The panel width the view was last framed at, so a dragged panel edge
   // can be told apart from the panel sliding open.
@@ -679,12 +696,58 @@ export function Canvas({
               {graph.meta.unrecognizedLineCount === 1 ? '' : 's'} unrecognized — transcript
               format may be newer than this rungraph version. Graph may be incomplete.
             </span>
+            {!window.RUNGRAPH_EMBED && (
+              <button
+                class="banner-more"
+                onClick={() => toggleUnrec(graph.meta.runId)}
+                aria-expanded={String(unrec?.runId === graph.meta.runId)}
+                title="which records, why, and their shape — ready to paste into an agent session"
+              >
+                {unrec?.runId === graph.meta.runId ? 'hide details ▴' : 'details ▾'}
+              </button>
+            )}
             <button
               class="banner-dismiss"
               onClick={() => setNoticeDismissedFor(graph.meta.runId)}
               title="dismiss this notice for this run"
               aria-label="dismiss the unrecognized-records notice"
             >
+              ×
+            </button>
+          </div>
+        )}
+        {/* The report opens from the banner's "details" or from the coverage
+            badge's (when the badge replaces the banner on a loud run). */}
+        {unrec?.runId === graph.meta.runId && (
+          <div class="banner banner-report">
+              <div class="banner-detail">
+                {unrec.error ? (
+                  <span>could not build the report: {unrec.error}</span>
+                ) : !unrec.text ? (
+                  <span>reading the transcript files…</span>
+                ) : (
+                  <>
+                    <div class="banner-detail-bar">
+                      <span>
+                        {unrec.total} skipped · {unrec.groups} kind{unrec.groups === 1 ? '' : 's'} · paste this into an agent session to fix
+                      </span>
+                      <button
+                        class="ghost"
+                        onClick={() =>
+                          navigator.clipboard?.writeText(unrec.text).then(() => {
+                            setUnrec((u) => (u && u.runId === graph.meta.runId ? { ...u, copied: true } : u));
+                            setTimeout(() => setUnrec((u) => (u ? { ...u, copied: false } : u)), 1400);
+                          })
+                        }
+                      >
+                        {unrec.copied ? 'copied' : 'copy report'}
+                      </button>
+                    </div>
+                    <pre>{unrec.text}</pre>
+                  </>
+                )}
+              </div>
+            <button class="banner-dismiss" onClick={() => setUnrec(null)} title="close the report" aria-label="close the report">
               ×
             </button>
           </div>

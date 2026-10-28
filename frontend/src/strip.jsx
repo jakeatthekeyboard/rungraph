@@ -62,14 +62,24 @@ export function Strip({
 
   // One badge, one phrase — the label text is IDENTICAL for quiet and loud, so
   // the user learns "read N% of this run" once and reads its prominence, not a
-  // second message. Never dismissable and never clickable: it focuses nothing
+  // second message. Never dismissable, and the badge itself focuses nothing
   // (there are no nodes to focus — the records that failed produced none), and
   // dismissing a fact about what was read would put the run back to looking
-  // complete. Absent coverage renders nothing: unknown is never shown as 100%.
+  // complete. Its "details" opens the skipped-records report (canvas banner
+  // area). Absent coverage renders nothing: unknown is never shown as 100%.
   const badge = cov && (
     <span class="coverage" data-verdict={cov.verdict} title={cov.title || undefined}>
       <span class="glyph" aria-hidden="true">◐</span>
       <span class="label">{cov.label}</span>
+      {cov.runId && !window.RUNGRAPH_EMBED && (
+        <button
+          class="coverage-more"
+          onClick={() => window.dispatchEvent(new CustomEvent('rungraph:unrecognized-details', { detail: cov.runId }))}
+          title="which records were skipped, why, and their shape — ready to paste into an agent session"
+        >
+          details
+        </button>
+      )}
     </span>
   );
 

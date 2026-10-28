@@ -11,6 +11,7 @@ import { liveServers } from './registry.js';
 import { launchTerminal } from './launch.js';
 import { openFolder, revealFile } from './open.js';
 import { withoutCaps } from './textcap.js';
+import { formatUnrecognized } from './unrecognized.js';
 
 const DIST_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const HOST = '127.0.0.1'; // privacy: never bind anything else
@@ -183,6 +184,8 @@ async function handle(req, res, state) {
     return apiFind(res, state, decodeURIComponent(m[1]), url.searchParams.get('q'));
   if ((m = path.match(/^\/api\/detail\/(.+)$/)))
     return apiDetail(res, state, decodeURIComponent(m[1]), url.searchParams.get('run'), url.searchParams.get('full') === '1');
+  if ((m = path.match(/^\/api\/unrecognized\/(.+)$/)))
+    return apiUnrecognized(res, state, decodeURIComponent(m[1]));
   if ((m = path.match(/^\/api\/locate\/(.+)$/)))
     return apiLocate(res, state, decodeURIComponent(m[1]));
   if ((m = path.match(/^\/api\/watch\/(.+)$/)))
@@ -578,6 +581,34 @@ async function loadFullDetails(state, runId) {
   const { details } = await withoutCaps(() => adapter.parse(ref, { collectDetails: true }));
   state.fullDetails = { runId, key, details };
   return details;
+}
+
+/**
+ * The "records unrecognized" banner's detail: which records were skipped,
+ * why, where, and their shape (values replaced), as paste-ready Markdown.
+ * Read from disk on demand; adapters without a report get the type counts.
+ */
+async function apiUnrecognized(res, state, runId) {
+  if (state.bundles) return sendJson(res, 409, { error: 'a bundle carries the graph, not the transcript files' });
+  const ref = await resolveRun(state, runId);
+  if (!ref) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
+  const adapter = ADAPTERS.find((a) => a.name === ref.adapter);
+  let report;
+  if (adapter?.unrecognizedReport) {
+    report = await adapter.unrecognizedReport(ref);
+  } else {
+    const { ir } = await parseCached(state, ref);
+    const bag = Object.values(ir.meta?.ext ?? {}).find((b) => b && typeof b === 'object' && b.unknownTypes)?.unknownTypes ?? {};
+    report = {
+      total: ir.meta?.unrecognizedLineCount ?? 0,
+      files: [ref.sessionFile ?? ref.dbPath].filter(Boolean),
+      groups: Object.entries(bag).map(([type, count]) => ({ type, reason: 'not recognized', count, samples: [] })),
+    };
+  }
+  // The graph's own count, so the report can say where the two differ (it
+  // scans every transcript file on disk; the graph reads only those it links).
+  const graphCount = (await parseCached(state, ref)).ir.meta?.unrecognizedLineCount ?? null;
+  sendJson(res, 200, { ...report, graphCount, text: formatUnrecognized(runId, ref.adapter, { ...report, graphCount }) });
 }
 
 async function apiDetail(res, state, nodeId, runId, full = false) {

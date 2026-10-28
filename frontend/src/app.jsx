@@ -962,6 +962,7 @@ export function App() {
     const types = unknownTypeSummary(meta);
     return {
       verdict,
+      runId: id,
       label: coverageLabel(meta),
       title: `${meta.coverage.unrecognized} of ${meta.coverage.records} records could not be parsed${
         types ? ` (${types})` : ''
