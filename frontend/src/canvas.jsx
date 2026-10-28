@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 // preact/compat is inside the preact package already — no new dependency.
 import { memo } from 'preact/compat';
 import { layoutGraph, edgePath } from './layout.js';
-import { inspectorWidth, inspectorWidthSetting } from './panel-width.js';
+import { inspectorWidth, inspectorWidthSetting, pickerWidthSetting } from './panel-width.js';
 import { badgedNodeIds, nodeMarks } from './focus.js';
 import { replayLabel } from './replay.js';
 import { runOrder, edgeOrder, nodeOrder } from '../../src/timeline.js';
@@ -85,6 +85,8 @@ export function Canvas({
   // The panel width the view was last framed at, so a dragged panel edge
   // can be told apart from the panel sliding open.
   const placedPanelWidth = useRef(null);
+  const placedPickerWidth = useRef(null);
+  const placedLeft = useRef(0); // canvas left edge the view was last placed at
   const [box, setBox] = useState(null);
   const [mmDragging, setMmDragging] = useState(false);
   const wrapRef = useRef(null);
@@ -157,7 +159,7 @@ export function Canvas({
     if (!el) return;
     const update = () => {
       const b = el.getBoundingClientRect();
-      setBox({ width: b.width, height: b.height });
+      setBox({ width: b.width, height: b.height, left: b.left });
     };
     update();
     const ro = new ResizeObserver(update);
@@ -187,7 +189,17 @@ export function Canvas({
       placedLive.current = live;
       placedWidth.current = b.width;
       placedPanelWidth.current = inspectorWidthSetting();
+      placedPickerWidth.current = pickerWidthSetting();
+      placedLeft.current = b.left;
       userMoved.current = false;
+    } else if (pickerWidthSetting() !== placedPickerWidth.current) {
+      // The user dragged the picker edge: keep the zoom, and slide the view
+      // by however far the canvas's left edge moved so the graph stays put
+      // on screen, exactly as it does when the inspector edge is dragged.
+      const dx = b.left - placedLeft.current;
+      if (dx) setView((v) => ({ ...v, tx: v.tx - dx }));
+      placedWidth.current = b.width;
+      placedPickerWidth.current = pickerWidthSetting();
     } else if (inspectorWidthSetting() !== placedPanelWidth.current) {
       // The user dragged the panel edge: keep the zoom and position exactly
       // as they are, and treat the new width as the settled one.
@@ -214,6 +226,7 @@ export function Canvas({
       }));
     }
     prevHeight.current = layout.height;
+    placedLeft.current = b.left; // only a picker drag compensates for the edge moving
     // `box` is in the deps so the re-frame above actually sees the canvas
     // settle — the ResizeObserver is what reports the inspector finishing.
   }, [layout, follow, live, box]);

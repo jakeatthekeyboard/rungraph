@@ -68,3 +68,73 @@ export function restoreInspectorWidth() {
     /* storage unavailable */
   }
 }
+
+// ---- the left panel (picker) ------------------------------------------------
+//
+// Same scheme as the inspector. The default lives in styles.css
+// (`--picker-w: min(var(--picker-max), max(208px, 28vw))`); a drag sets
+// `--picker-w-set` on <html>, which `.main` prefers over that default. A
+// collapsed picker still goes to 0 whatever was dragged.
+
+const PICKER_KEY = 'rungraph.pickerWidth';
+
+export const PICKER_MIN_W = 208; // the CSS floor: narrower and labels stop reading
+
+/** The width the CSS default resolves to (the picker as rendered, when open). */
+function defaultPickerWidth() {
+  return document.querySelector('.picker')?.getBoundingClientRect().width ?? PICKER_MIN_W;
+}
+
+/** Largest width that still leaves the inspector and some graph visible. */
+export function maxPickerWidth() {
+  const inspector = document.querySelector('.inspector')?.getBoundingClientRect().width ?? 0;
+  return Math.max(PICKER_MIN_W, window.innerWidth - inspector - MIN_CANVAS);
+}
+
+export function clampPickerWidth(w) {
+  return Math.round(Math.min(maxPickerWidth(), Math.max(PICKER_MIN_W, w)));
+}
+
+/** The width the user dragged to, as set on <html> ('' when never dragged). */
+export function pickerWidthSetting() {
+  return document.documentElement.style.getPropertyValue('--picker-w-set');
+}
+
+/** The picker's current width in px: the dragged width, or the default. */
+export function pickerWidth() {
+  const set = parseFloat(pickerWidthSetting());
+  return Number.isFinite(set) ? set : defaultPickerWidth();
+}
+
+/** Apply a width (null = back to the default) and remember it. */
+export function setPickerWidth(w) {
+  const root = document.documentElement.style;
+  if (w == null) {
+    root.removeProperty('--picker-w-set');
+    try {
+      localStorage.removeItem(PICKER_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+    return;
+  }
+  const px = clampPickerWidth(w);
+  root.setProperty('--picker-w-set', `${px}px`);
+  try {
+    localStorage.setItem(PICKER_KEY, String(px));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** Restore a remembered width once, at startup. */
+export function restorePickerWidth() {
+  try {
+    const w = parseFloat(localStorage.getItem(PICKER_KEY) ?? '');
+    if (Number.isFinite(w) && w >= PICKER_MIN_W) {
+      document.documentElement.style.setProperty('--picker-w-set', `${Math.round(w)}px`);
+    }
+  } catch {
+    /* storage unavailable */
+  }
+}

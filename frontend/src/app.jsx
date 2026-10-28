@@ -6,6 +6,7 @@ import { Strip, SIGNAL_GLYPHS } from './strip.jsx';
 import { ReplayBar } from './replay-bar.jsx';
 import { ExportDialog } from './export.jsx';
 import { ResumePopover } from './resume.jsx';
+import { pickerWidth, restorePickerWidth, setPickerWidth } from './panel-width.js';
 import { FONT_SIZES, setFontSize, setTheme, storedFontSize, storedTheme } from './theme.js';
 import {
   safeTimeline,
@@ -1091,6 +1092,7 @@ export function App() {
       </header>
       <div class="main" data-left={String(panes.left)} data-right={String(panes.right)}>
         <Picker index={index} runId={runId} onSelect={selectRun} onResume={openResume} />
+        {panes.left && <PickerResizeHandle />}
         <div class="center">
           {linkMiss && (
             <div class="link-banner">
@@ -1673,5 +1675,56 @@ function PanelIcon({ side, open }) {
       <rect class="frame" x="0.75" y="0.75" width="13.5" height="11.5" rx="2.25" />
       <line class="frame" x1={side === 'left' ? 5.25 : 9.75} y1="1" x2={side === 'left' ? 5.25 : 9.75} y2="12" />
     </svg>
+  );
+}
+
+if (typeof window !== 'undefined') restorePickerWidth();
+
+/**
+ * The drag handle on the picker's right edge — the inspector's ResizeHandle
+ * mirrored. Dragging right widens the picker, left narrows it; double-click
+ * restores the default width.
+ */
+function PickerResizeHandle() {
+  const drag = useRef(null);
+  const onPointerDown = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    drag.current = { startX: e.clientX, startW: pickerWidth() };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    document.documentElement.dataset.resizing = 'picker';
+  };
+  const onPointerMove = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    setPickerWidth(d.startW + (e.clientX - d.startX));
+  };
+  const end = () => {
+    if (!drag.current) return;
+    drag.current = null;
+    delete document.documentElement.dataset.resizing;
+    window.dispatchEvent(new Event('resize')); // let canvas observers settle
+  };
+  return (
+    <div
+      class="picker-resize"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="resize the run list"
+      title="drag to resize · double-click to reset"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onLostPointerCapture={end}
+      onDblClick={() => {
+        // Snap rather than animate, so the canvas sees one move and keeps
+        // the graph in place for it.
+        const root = document.documentElement;
+        root.dataset.resizing = 'picker';
+        setPickerWidth(null);
+        requestAnimationFrame(() => requestAnimationFrame(() => delete root.dataset.resizing));
+      }}
+    />
   );
 }

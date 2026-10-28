@@ -281,7 +281,8 @@ button.ghost[data-on="true"] {
 .main {
   display: grid;
   /* Floor the picker: below ~208px the project labels and run titles stop being readable. */
-  --picker-w: min(var(--picker-max), max(208px, 28vw));
+  --picker-w: var(--picker-w-set, min(var(--picker-max), max(208px, 28vw)));
+  position: relative; /* anchors the picker's resize handle */
   grid-template-columns: var(--picker-w) minmax(0, 1fr) auto;
   min-height: 0;
   transition: grid-template-columns 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -290,6 +291,24 @@ button.ghost[data-on="true"] {
    zero rather than the pane being hidden, so the canvas actually reclaims it. */
 .main[data-left="false"] { --picker-w: 0px; }
 .main[data-left="false"] .picker { border-right: none; }
+/* Drag handle on the picker's right edge, the mirror of .inspector-resize.
+   It sits on .main rather than inside the picker so it does not scroll with
+   the run list. */
+.picker-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--picker-w) - 3px);
+  width: 6px;
+  z-index: 3;
+  cursor: col-resize;
+  touch-action: none;
+  transition: background 120ms ease-out;
+}
+.picker-resize:hover,
+:root[data-resizing="picker"] .picker-resize { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-resizing="picker"] .main { transition: none; }
+:root[data-resizing="picker"] { cursor: col-resize; user-select: none; -webkit-user-select: none; }
 
 .pane-toggle {
   flex: none;
@@ -1654,7 +1673,8 @@ button.ghost[data-on="true"] {
 /* Narrow: the readout drops to the time alone and the rate toggle hides; the
    controls and the scrubber stay. The bar still stacks — it never overlays. */
 @media (max-width: 700px) {
-  .inspector-resize { display: none; }
+  .inspector-resize,
+  .picker-resize { display: none; }
   .replay-bar .step,
   .replay-bar .rate { display: none; }
   /* No keyboard on a phone: the × stays, its key hint goes. */
