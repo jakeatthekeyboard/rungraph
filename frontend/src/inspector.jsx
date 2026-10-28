@@ -48,11 +48,32 @@ export function Inspector({
   onFocusFile,
 }) {
   const open = Boolean(graph) && paneOpen;
+  // Accordion state for every Section in the pane: the default (all open /
+  // all folded, set by the bar's two buttons) and the ids flipped from it by
+  // their own heading. Kept here, so a folded "transcript" stays folded as
+  // the selection moves from node to node.
+  const [sections, setSections] = useState({ open: true, flip: new Set() });
+  sections.toggle = (id) =>
+    setSections((cur) => {
+      const flip = new Set(cur.flip);
+      if (flip.has(id)) flip.delete(id);
+      else flip.add(id);
+      return { open: cur.open, flip };
+    });
   return (
     <aside class="inspector" data-open={String(open)}>
       {open && <ResizeHandle />}
       {open && (
+        <Sections.Provider value={sections}>
         <div class="inspector-inner">
+          <div class="acc-bar">
+            <button class="ghost" onClick={() => setSections({ open: true, flip: new Set() })} title="open every section">
+              ⊞ expand all
+            </button>
+            <button class="ghost" onClick={() => setSections({ open: false, flip: new Set() })} title="fold every section to its heading">
+              ⊟ collapse all
+            </button>
+          </div>
           {selection && <button class="ghost close" onClick={onClose}>close</button>}
           {selection?.type === 'node' ? (
             <NodeDetail
@@ -83,6 +104,7 @@ export function Inspector({
             />
           )}
         </div>
+        </Sections.Provider>
       )}
     </aside>
   );
@@ -184,8 +206,7 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
       </dl>
 
       {focus && (
-        <>
-          <div class="microlabel section-label">focused — {focus.label}</div>
+        <Section id="focused" label={`focused — ${focus.label}`}>
           {focus.reason && <p class="focus-reason">{focus.reason}</p>}
           <div class="rows">
             {focused.map((n) => (
@@ -204,23 +225,21 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
               <div class="loading">{present && focus.nodeIds.length > 0 ? 'nothing matched yet' : 'nothing matched'}</div>
             )}
           </div>
-        </>
+        </Section>
       )}
 
       {signals.length > 0 && (
-        <>
-          <div class="microlabel section-label">signals</div>
+        <Section id="signals" label="signals">
           <div class="rows">
             {signals.map((s) => (
               <SignalRow key={s.id} signal={s} focus={focus} onFocusSignal={onFocusSignal} />
             ))}
           </div>
-        </>
+        </Section>
       )}
 
       {files.length > 0 && (
-        <>
-          <div class="microlabel section-label">files touched</div>
+        <Section id="files" label="files touched">
           {/* Full paths, never shortened: the list scrolls sideways as one
               block when a path is wider than the pane. */}
           <div class="rows files-scroll">
@@ -239,7 +258,7 @@ function RunOverview({ graph, project, focus, replay, signals: visible, onSelect
             ))}
             </div>
           </div>
-        </>
+        </Section>
       )}
 
       <AskYourAgent graph={graph} project={project} />
@@ -478,6 +497,33 @@ function TextBox({ text, class: cls }) {
   );
 }
 
+const Sections = createContext({ open: true, flip: new Set(), toggle: () => {} });
+
+/**
+ * A titled section of the pane that folds to its heading. Open or folded
+ * comes from the pane's accordion state (Sections): the bar's expand /
+ * collapse all, then this heading's own toggle.
+ */
+function Section({ id, label, cls, children }) {
+  const st = useContext(Sections);
+  const isOpen = st.flip.has(id) ? !st.open : st.open;
+  return (
+    <div class={cls ? `section ${cls}` : 'section'} data-open={String(isOpen)}>
+      <button
+        type="button"
+        class="microlabel section-label section-toggle"
+        onClick={() => st.toggle(id)}
+        aria-expanded={String(isOpen)}
+        title={isOpen ? 'fold this section' : 'open this section'}
+      >
+        <span class="chev" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+        <span>{label}</span>
+      </button>
+      {isOpen && <div class="section-body">{children}</div>}
+    </div>
+  );
+}
+
 function CallInput({ text }) {
   const pairs = flatPairs(text);
   if (!pairs) return <Clipped text={text} />;
@@ -572,10 +618,11 @@ function AskYourAgent({ graph, project }) {
   };
 
   return (
-    <div class="ask">
-      <div class="microlabel section-label">
-        ask your agent{connected && <span class="ok" title="an agent has driven this dashboard"> · connected</span>}
-      </div>
+    <Section
+      id="ask"
+      cls="ask"
+      label={<>ask your agent{connected && <span class="ok" title="an agent has driven this dashboard"> · connected</span>}</>}
+    >
       {!connected && (
         <button class="row setup" onClick={() => copy(INSTALL_CMD, 'install')} title="copy">
           <span class="grow"><code>{INSTALL_CMD}</code></span>
@@ -593,7 +640,7 @@ function AskYourAgent({ graph, project }) {
           ? 'paste one into your agent — the answer lands in your terminal, the graph lights up here'
           : 'run the command once, restart your agent, then paste a question into it'}
       </p>
-    </div>
+    </Section>
   );
 }
 
@@ -845,21 +892,17 @@ function NodeDetail({
       {/* Why the canvas marked this node — and, for `info` signals, why it did
           not. Both are answered here rather than left to guesswork. */}
       {sigs.length > 0 && (
-        <>
-          <div class="microlabel section-label">signals</div>
+        <Section id="signals" label="signals">
           <div class="rows">
             {sigs.map((s) => (
               <SignalRow key={s.id} signal={s} focus={focus} onFocusSignal={onFocusSignal} />
             ))}
           </div>
-        </>
+        </Section>
       )}
 
       {node.files?.length > 0 && (
-        <>
-          <div class="microlabel section-label">
-            {node.files.length} file{node.files.length === 1 ? '' : 's'} touched
-          </div>
+        <Section id="files" label={`${node.files.length} file${node.files.length === 1 ? '' : 's'} touched`}>
           <div class="rows files-scroll">
             <div class="files-inner">
               {node.files.map((f) => (
@@ -869,7 +912,7 @@ function NodeDetail({
               ))}
             </div>
           </div>
-        </>
+        </Section>
       )}
 
       {node.kind === 'workflow' && node.runRef && (
@@ -975,13 +1018,13 @@ function DetailBody({ detail, futureFrom = Infinity }) {
     case 'turn':
       return (
         <>
-          <div class="microlabel section-label">prompt</div>
-          <Clipped text={detail.prompt || '(empty)'} />
+          <Section id="prompt" label="prompt">
+            <Clipped text={detail.prompt || '(empty)'} />
+          </Section>
           {detail.responseText && (
-            <>
-              <div class="microlabel section-label">response</div>
+            <Section id="response" label="response">
               <Clipped text={detail.responseText} />
-            </>
+            </Section>
           )}
         </>
       );
@@ -989,24 +1032,20 @@ function DetailBody({ detail, futureFrom = Infinity }) {
       return (
         <>
           {detail.error && (
-            <>
-              <div class="microlabel section-label">error</div>
+            <Section id="error" label="error">
               <Clipped text={detail.error} class="error-text" />
-            </>
+            </Section>
           )}
-          <div class="microlabel section-label">prompt given</div>
-          <Clipped text={detail.prompt || '(unknown)'} />
+          <Section id="prompt-given" label="prompt given">
+            <Clipped text={detail.prompt || '(unknown)'} />
+          </Section>
           {detail.result != null && (
-            <>
-              <div class="microlabel section-label">result</div>
+            <Section id="result" label="result">
               <Clipped text={detail.result} />
-            </>
+            </Section>
           )}
           {detail.transcript?.length > 0 && (
-            <>
-              <div class="microlabel section-label">
-                transcript ({detail.transcript.length} entries)
-              </div>
+            <Section id="transcript" label={`transcript (${detail.transcript.length} entries)`}>
               {detail.transcript.map((t, i) => (
                 <div class="transcript-entry" key={i}>
                   <div class="who" data-role={t.role}>
@@ -1018,7 +1057,7 @@ function DetailBody({ detail, futureFrom = Infinity }) {
                   <Clipped text={t.text} />
                 </div>
               ))}
-            </>
+            </Section>
           )}
         </>
       );
@@ -1026,12 +1065,11 @@ function DetailBody({ detail, futureFrom = Infinity }) {
       return (
         <>
           {detail.context && (
-            <>
-              <div class="microlabel section-label">why</div>
+            <Section id="why" label="why">
               <Clipped text={detail.context} />
-            </>
+            </Section>
           )}
-          <div class="microlabel section-label">{detail.calls.length} call{detail.calls.length === 1 ? '' : 's'}</div>
+          <Section id="calls" label={`${detail.calls.length} call${detail.calls.length === 1 ? '' : 's'}`}>
           <FailedCallJumps calls={detail.calls} />
           {detail.calls.map((c, i) => (
             <div class="tool-call" key={i} id={`call-${i + 1}`} data-future={String(i >= futureFrom)}>
@@ -1044,22 +1082,21 @@ function DetailBody({ detail, futureFrom = Infinity }) {
               {c.output && <Clipped text={c.output} />}
             </div>
           ))}
+          </Section>
         </>
       );
     case 'human':
       return (
         <>
           {detail.context && (
-            <>
-              <div class="microlabel section-label">context</div>
+            <Section id="context" label="context">
               <Clipped text={detail.context} />
-            </>
+            </Section>
           )}
           {detail.answer && (
-            <>
-              <div class="microlabel section-label">what the human did</div>
+            <Section id="answer" label="what the human did">
               <Clipped text={detail.answer} />
-            </>
+            </Section>
           )}
         </>
       );
@@ -1067,10 +1104,9 @@ function DetailBody({ detail, futureFrom = Infinity }) {
       return (
         <>
           {detail.returnValue != null && (
-            <>
-              <div class="microlabel section-label">return value</div>
+            <Section id="return" label="return value">
               <Clipped text={detail.returnValue} />
-            </>
+            </Section>
           )}
         </>
       );
@@ -1110,12 +1146,9 @@ function EdgeDetail({ graph, edgeId, replay = null }) {
             {edge.reason && (<><dt>reason</dt><dd>⚑ {edge.reason}<CopyValue /></dd></>)}
           </dl>
           {edge.label && (
-            <>
-              <div class="microlabel section-label">
-                {edge.kind === 'spawn' ? 'prompt' : edge.kind === 'return' ? 'result' : 'label'}
-              </div>
+            <Section id="edge-label" label={edge.kind === 'spawn' ? 'prompt' : edge.kind === 'return' ? 'result' : 'label'}>
               <TextBox text={edge.label} />
-            </>
+            </Section>
           )}
         </>
       )}

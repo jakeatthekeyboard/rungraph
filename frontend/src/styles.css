@@ -1956,3 +1956,22 @@ button.ghost[data-on="true"] {
 
 /* The run overview's "full transcript ↗" (opens transcript-view.jsx's window). */
 .inspector .full-transcript { display: inline-block; margin: -4px 0 12px; }
+
+/* Accordion: the bar's expand / collapse all, and each section heading as
+   its own toggle (Section in inspector.jsx). */
+.inspector .acc-bar { display: flex; gap: 6px; margin: 0 0 10px; }
+.inspector .acc-bar button { padding: 1px 7px; font-size: var(--fs-sm); }
+.inspector .section-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.inspector .section-toggle:hover { color: var(--ink); }
+.inspector .section-toggle .chev { flex: none; width: 1em; color: var(--ink-faint); }
+.inspector .section[data-open="false"] .section-toggle { margin-bottom: 6px; }
