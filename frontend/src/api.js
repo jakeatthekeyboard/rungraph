@@ -10,9 +10,9 @@ export async function fetchGraph(runId) {
   return r.json();
 }
 
-export async function fetchDetail(runId, nodeId) {
+export async function fetchDetail(runId, nodeId, { full = false } = {}) {
   const r = await fetch(
-    `/api/detail/${encodeURIComponent(nodeId)}?run=${encodeURIComponent(runId)}`,
+    `/api/detail/${encodeURIComponent(nodeId)}?run=${encodeURIComponent(runId)}${full ? '&full=1' : ''}`,
   );
   if (!r.ok) throw new Error(`detail: ${r.status}`);
   return r.json();

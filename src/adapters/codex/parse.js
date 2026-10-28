@@ -4,6 +4,7 @@ import { readJsonLines, statOrNull } from '../../util.js';
 import { mergeFiles } from '../claude-code/files.js';
 import { ADAPTER_NAME, promptText, recordChildFiles, rolloutFileForThread, runStats } from './detect.js';
 import { tallyUnknownType, mergeUnknownTypes } from '../../coverage.js';
+import { capsLifted } from '../../textcap.js';
 
 /**
  * Codex rollout parser: lines in, IR out. No server imports; no I/O beyond
@@ -104,7 +105,7 @@ const SHELL_TOOLS = new Set(['exec_command', 'shell_command', 'exec', 'wait', 'w
 
 const cap = (text, max) => {
   if (typeof text !== 'string') return text == null ? '' : JSON.stringify(text).slice(0, max);
-  return text.length > max ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
+  return text.length > max && !capsLifted() ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
 };
 
 const msBetween = (a, b) => {

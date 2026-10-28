@@ -1711,6 +1711,14 @@ button.ghost[data-on="true"] {
 }
 .tool-call[data-future="true"] { opacity: 0.25; }
 .detail-body[data-stale="true"] { opacity: 0.45; transition: opacity 160ms ease-out; }
+/* Under a box the adapter shortened: fetches the node's detail uncapped. */
+.inspector .show-full {
+  display: block;
+  margin: -4px 0 10px;
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+}
 
 /* Narrow: the readout drops to the time alone and the rate toggle hides; the
    controls and the scrubber stay. The bar still stacks — it never overlays. */

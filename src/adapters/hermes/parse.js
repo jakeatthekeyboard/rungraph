@@ -3,6 +3,7 @@ import { mergeFiles } from '../claude-code/files.js';
 import { openDb, tableColumns, selectList, schemaVersion, iso } from './db.js';
 import { ADAPTER_NAME } from './detect.js';
 import { tallyUnknownType } from '../../coverage.js';
+import { capsLifted } from '../../textcap.js';
 
 /**
  * Hermes parser: rows in, IR out. No server imports; no I/O beyond the run's
@@ -84,7 +85,7 @@ const MSG_COLS = [
 
 const cap = (text, max) => {
   if (typeof text !== 'string') return text == null ? '' : JSON.stringify(text).slice(0, max);
-  return text.length > max ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
+  return text.length > max && !capsLifted() ? text.slice(0, max) + `\n… (${text.length - max} more chars)` : text;
 };
 
 const num = (v) => (Number.isFinite(v) ? v : 0);
