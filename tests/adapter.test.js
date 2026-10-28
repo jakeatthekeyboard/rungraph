@@ -678,3 +678,21 @@ describe('an agent call Claude Code refused', () => {
     expect(details.get('a:toolu_fxA001').error).toBeUndefined();
   });
 });
+
+describe('sourceFile (claude-code)', () => {
+  it('maps an agent node to its own transcript, and everything else to the session file', async () => {
+    const { sourceFile } = await import('../src/adapters/claude-code/index.js');
+    const refs = await detect([FIXTURE_ROOT]);
+    const ref = refs.find((r) => r.runId === SESSION_RUN_ID);
+    const { ir } = await parse(ref);
+    const turn = ir.nodes.find((n) => n.kind === 'turn');
+    expect(await sourceFile(ref, turn)).toBe(ref.sessionFile);
+    const agent = ir.nodes.find((n) => n.kind === 'agent' && n.agentId);
+    if (agent) {
+      const f = await sourceFile(ref, agent);
+      expect(f.endsWith(`agent-${agent.agentId}.jsonl`) || f === ref.sessionFile).toBe(true);
+    }
+    // an agent id that could escape the folder is never joined into a path
+    expect(await sourceFile(ref, { kind: 'agent', agentId: '../../x' })).toBe(ref.sessionFile);
+  });
+});

@@ -52,13 +52,14 @@ export async function postResume(runId, fork) {
 
 /**
  * Open one of the run's folders in Finder / File Explorer: 'project' (where
- * the run worked) or 'transcripts' (where its session files live).
+ * the run worked), 'transcripts' (where its session files live), or 'node'
+ * (the file `nodeId` was read from, shown selected in its folder).
  */
-export async function postReveal(runId, what = 'project') {
+export async function postReveal(runId, what = 'project', nodeId = undefined) {
   const r = await fetch('/api/reveal', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ runId, what }),
+    body: JSON.stringify({ runId, what, ...(nodeId ? { nodeId } : {}) }),
   });
   if (!r.ok) throw new Error(`reveal: ${r.status}`);
   return r.json();

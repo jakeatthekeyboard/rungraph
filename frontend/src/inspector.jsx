@@ -1,7 +1,7 @@
 import { createContext } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { fetchDetail } from './api.js';
+import { fetchDetail, postReveal } from './api.js';
 import { prettyText } from './pretty.js';
 import { useTextStyle } from './textstyle.js';
 import { Markdown, styledKind } from './markdown-view.jsx';
@@ -763,7 +763,7 @@ function NodeDetail({
         )}
       </dl>
 
-      <NodeJson graph={graph} node={node} detail={fresh} />
+      <NodeJson graph={graph} node={node} detail={fresh} runId={runId} />
 
       {/* Why the canvas marked this node — and, for `info` signals, why it did
           not. Both are answered here rather than left to guesswork. */}
@@ -829,8 +829,16 @@ function NodeDetail({
  * it loads. "view JSON" opens it in a new browser tab as a JSON blob, so the
  * browser's own viewer shows it at full width.
  */
-function NodeJson({ graph, node, detail }) {
+function NodeJson({ graph, node, detail, runId }) {
   const [copied, setCopied] = useState(false);
+  const [shown, setShown] = useState(null); // null | 'ok' | 'failed'
+  // The transcript file this node was read from, selected in Finder / File
+  // Explorer. The server resolves the file from the run and node ids.
+  const showFile = () =>
+    postReveal(runId, 'node', node.id)
+      .then((r) => setShown(r.opened ? 'ok' : 'failed'))
+      .catch(() => setShown('failed'))
+      .finally(() => setTimeout(() => setShown(null), 1600));
   const text = () => {
     const edges = graph.edges.filter((e) => e.from === node.id || e.to === node.id);
     return JSON.stringify({ node, edges, detail: detail ?? null }, null, 2);
@@ -855,6 +863,15 @@ function NodeJson({ graph, node, detail }) {
           view JSON ↗
         </a>
         <button class="ghost" onClick={copy}>{copied ? 'copied' : 'copy JSON'}</button>
+        {!window.RUNGRAPH_EMBED && (
+          <button
+            class="ghost"
+            onClick={showFile}
+            title="show the .jsonl this node was read from in Finder / File Explorer"
+          >
+            {shown === 'ok' ? 'shown' : shown === 'failed' ? 'no file here' : 'show file'}
+          </button>
+        )}
       </div>
     </div>
   );
