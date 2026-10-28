@@ -1,6 +1,7 @@
 import { watch } from 'node:fs';
 import { statOrNull } from './util.js';
 import { attachSignals } from './signals.js';
+import { attachDefinitions } from './definitions.js';
 
 /**
  * Watch one run's files and re-parse on change. This is the entire live-tail
@@ -63,6 +64,8 @@ export function watchRun(ref, adapter, { onGraph, onError, debounceMs = 300 }) {
       // Re-derived on every rebuild: a live run's trouble is exactly the thing
       // that changes while you are not looking. Pure pass over an in-memory IR.
       attachSignals(ir);
+      // Same decoration as the server's parse, so a live delta never drops it.
+      await attachDefinitions(adapter, ref, ir, details);
       if (!closed) onGraph(ir, details);
     } catch (err) {
       onError?.(err);

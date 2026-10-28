@@ -1975,3 +1975,10 @@ button.ghost[data-on="true"] {
 .inspector .section-toggle:hover { color: var(--ink); }
 .inspector .section-toggle .chev { flex: none; width: 1em; color: var(--ink-faint); }
 .inspector .section[data-open="false"] .section-toggle { margin-bottom: 6px; }
+
+/* Definition files: the node's extra canvas line, the box button naming the
+   source file, and the property rows' reveal button. */
+.node text.deffile { fill: var(--sage); opacity: 0.85; }
+.text-box .box-tools button.src { font-family: var(--mono); padding: 2px 6px; }
+.text-box .box-tools button.src:disabled { cursor: default; opacity: 0.6; }
+.kv dd .reveal-def { opacity: 0.6; }

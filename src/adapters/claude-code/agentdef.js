@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { statOrNull } from '../../util.js';
 
 // Which agent definition an agent node ran as, and where its .md file is.
@@ -39,19 +39,40 @@ async function mdFiles(dir, depth = 0) {
   return out;
 }
 
-/** Plugin agents folders: marketplaces/<m>/plugins/<p>/agents and cache/<m>/<p>/<ver>/agents. */
-async function pluginAgentDirs(root) {
-  const dirs = [];
-  const sub = async (d) => {
+/**
+ * Every agent .md and SKILL.md under the plugins folder, whatever its layout
+ * (marketplaces/…/plugins/<p>/, cache/<m>/<p>/<ver>/, synced/…/<p>/). One
+ * bounded walk, remembered for a short while: a run with a hundred agents
+ * must not walk the tree a hundred times.
+ */
+const pluginWalk = new Map(); // root → { at, agents: string[], skills: string[] }
+async function pluginDefinitionFiles(root) {
+  const hit = pluginWalk.get(root);
+  if (hit && Date.now() - hit.at < 30_000) return hit;
+  const agents = [];
+  const skills = [];
+  const walk = async (dir, depth) => {
+    let ents = [];
     try {
-      return (await readdir(d, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => join(d, e.name));
+      ents = await readdir(dir, { withFileTypes: true });
     } catch {
-      return [];
+      return;
+    }
+    for (const e of ents) {
+      if (!e.isDirectory() || e.name.startsWith('.') || e.name === 'node_modules') continue;
+      const p = join(dir, e.name);
+      if (e.name === 'agents') agents.push(...(await mdFiles(p)));
+      else if (e.name === 'skills') {
+        for (const s of await readdir(p, { withFileTypes: true }).catch(() => [])) {
+          if (s.isDirectory() && (await statOrNull(join(p, s.name, 'SKILL.md')))) skills.push(join(p, s.name, 'SKILL.md'));
+        }
+      } else if (depth < 6) await walk(p, depth + 1);
     }
   };
-  for (const m of await sub(join(root, 'marketplaces'))) for (const p of await sub(join(m, 'plugins'))) dirs.push(join(p, 'agents'));
-  for (const m of await sub(join(root, 'cache'))) for (const p of await sub(m)) for (const v of await sub(p)) dirs.push(join(v, 'agents'));
-  return dirs;
+  await walk(root, 0);
+  const out = { at: Date.now(), agents, skills };
+  pluginWalk.set(root, out);
+  return out;
 }
 
 /** The front matter's `name:`, when the file has one. */
@@ -87,9 +108,49 @@ export async function agentDefinition(ref, node, { home = homedir() } = {}) {
   if (BUILT_IN.has(type)) return { agentType: type, file: null, builtIn: true };
   const [plugin, name] = type.includes(':') ? type.split(/:(.*)/s) : [null, type];
   const claude = join(home, '.claude');
-  const dirs = plugin
-    ? await pluginAgentDirs(join(claude, 'plugins'))
-    : [...(ref.projectExists && ref.project ? [join(ref.project, '.claude', 'agents')] : []), join(claude, 'agents'), ...(await pluginAgentDirs(join(claude, 'plugins')))];
-  const file = await findIn(dirs, name);
+  const local = plugin ? [] : [...(ref.projectExists && ref.project ? [join(ref.project, '.claude', 'agents')] : []), join(claude, 'agents')];
+  let file = await findIn(local, name);
+  if (!file) {
+    const { agents } = await pluginDefinitionFiles(join(claude, 'plugins'));
+    file = await pickByName(agents, name, plugin, (f) => basename(f, '.md'));
+  }
   return { agentType: type, file, builtIn: false };
+}
+
+/** From candidate files, the one named `name` — preferring one under the plugin's own folder. */
+async function pickByName(files, name, plugin, nameOf) {
+  const want = name.toLowerCase();
+  let hits = files.filter((f) => nameOf(f).toLowerCase() === want);
+  if (!hits.length) {
+    hits = [];
+    for (const f of files) if ((await declaredName(f))?.toLowerCase() === want) hits.push(f);
+  }
+  if (plugin) {
+    const scoped = hits.filter((f) => f.split(/[\\/]/).some((seg) => seg.toLowerCase().startsWith(plugin.toLowerCase())));
+    if (scoped.length) return scoped[0];
+  }
+  return hits[0] ?? null;
+}
+
+/**
+ * Where a skill's SKILL.md is, by the name the Skill tool was called with:
+ * `name`, `plugin:name`, or a folder-scoped `dir/sub:name`. Looked for in the
+ * project's .claude/skills, ~/.claude/skills, then installed plugins. A skill
+ * that ships inside Claude Code itself has no file: `{ file: null }`.
+ * @returns {Promise<{ skill: string, file: string|null }>}
+ */
+export async function skillDefinition(ref, skill, { home = homedir() } = {}) {
+  if (typeof skill !== 'string' || !skill.trim() || skill.length > 200) return { skill: String(skill ?? ''), file: null };
+  const [scope, name] = skill.includes(':') ? skill.split(/:(.*)/s) : [null, skill];
+  if (!/^[\w.-]+$/.test(name)) return { skill, file: null };
+  const claude = join(home, '.claude');
+  const local = [];
+  const proj = ref.projectExists && ref.project ? ref.project : null;
+  if (proj && scope && /^[\w./-]+$/.test(scope) && !scope.includes('..')) local.push(join(proj, scope, '.claude', 'skills', name, 'SKILL.md'));
+  if (proj) local.push(join(proj, '.claude', 'skills', name, 'SKILL.md'));
+  local.push(join(claude, 'skills', name, 'SKILL.md'));
+  for (const f of local) if (await statOrNull(f)) return { skill, file: f };
+  const { skills } = await pluginDefinitionFiles(join(claude, 'plugins'));
+  const file = await pickByName(skills, name, scope, (f) => basename(dirname(f)));
+  return { skill, file };
 }

@@ -13,6 +13,7 @@ import { openFolder, revealFile } from './open.js';
 import { withoutCaps } from './textcap.js';
 import { formatUnrecognized } from './unrecognized.js';
 import { transcriptFromGraph } from './transcript.js';
+import { attachDefinitions } from './definitions.js';
 
 const DIST_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const HOST = '127.0.0.1'; // privacy: never bind anything else
@@ -249,6 +250,8 @@ async function parseCached(state, ref) {
   // Signals are derived once, here, so the graph the browser draws and the
   // graph an agent reads over MCP can never disagree about what is wrong.
   attachSignals(ir);
+  // Which agent .md / SKILL.md each node ran from, on this machine.
+  await attachDefinitions(adapter, ref, ir, details);
   const entry = { key, ir, details };
   state.parseCache.set(ref.runId, entry);
   if (state.parseCache.size > 8) {
@@ -466,13 +469,25 @@ async function apiReveal(req, res, state) {
   const runId = typeof body?.runId === 'string' ? body.runId : null;
   const what = body?.what ?? 'project';
   const nodeId = typeof body?.nodeId === 'string' ? body.nodeId : null;
-  if (!runId || !['project', 'transcripts', 'node', 'agent'].includes(what) || ((what === 'node' || what === 'agent') && !nodeId)) {
+  if (!runId || !['project', 'transcripts', 'node', 'agent', 'skill'].includes(what) || (['node', 'agent', 'skill'].includes(what) && !nodeId)) {
     return sendJson(res, 400, {
-      error: "expected { runId: string, what?: 'project' | 'transcripts' | 'node' | 'agent', nodeId?: string }",
+      error: "expected { runId: string, what?: 'project' | 'transcripts' | 'node' | 'agent' | 'skill', nodeId?: string, skill?: string }",
     });
   }
   const ref = await resolveRun(state, runId);
   if (!ref) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
+  if (what === 'skill') {
+    // A SKILL.md the node called, by skill name -- looked up in the node's own
+    // definitions (resolved at parse), never a path from the request.
+    const { ir } = await parseCached(state, ref);
+    const node = ir.nodes.find((n) => n.id === nodeId);
+    if (!node) return sendJson(res, 404, { error: `no node "${nodeId}" in run "${runId}"` });
+    const s = node.definitions?.skills?.find((x) => x.name === body?.skill);
+    if (!s) return sendJson(res, 404, { error: `node "${nodeId}" did not call skill "${body?.skill}"` });
+    if (!s.file) return sendJson(res, 200, { opened: false, skill: s.name, file: null, builtIn: true });
+    const opened = await state.revealFile(s.file);
+    return sendJson(res, 200, { opened, skill: s.name, file: s.file });
+  }
   if (what === 'agent') {
     // The agent's definition (.md), shown selected in its folder. A built-in
     // type has no file; the answer says so instead of failing.

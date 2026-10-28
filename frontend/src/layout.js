@@ -1,4 +1,5 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
+import { definitionLine } from '../../src/definitions.js';
 
 const elk = new ELK();
 
@@ -13,7 +14,8 @@ const SIZES = {
 export function nodeSize(node) {
   const s = SIZES[node.kind] ?? SIZES.tool;
   const w = Math.max(s.minW, Math.min(s.maxW, 34 + node.label.length * 6.6));
-  return { w, h: s.h };
+  // One more line for a node that names its definition file (agent .md / SKILL.md).
+  return { w, h: s.h + (definitionLine(node) ? 14 : 0) };
 }
 
 /**
