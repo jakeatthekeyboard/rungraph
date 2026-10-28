@@ -92,6 +92,25 @@ describe('POST /api/reveal', () => {
     expect(opened.length).toBe(before);
   });
 
+  it('what: transcripts opens the folder holding the session .jsonl', async () => {
+    const { status, body } = await post({ runId: runId('-proj-with-space', REAL_SID), what: 'transcripts' });
+    expect(status).toBe(200);
+    expect(body).toEqual({ opened: true });
+    expect(opened.at(-1)).toBe(join(tmp, 'projects', '-proj-with-space'));
+  });
+
+  it('what: transcripts works even when the project folder is gone', async () => {
+    const { status } = await post({ runId: runId('-home-dev-gone', GONE_SID), what: 'transcripts' });
+    expect(status).toBe(200);
+    expect(opened.at(-1)).toBe(join(tmp, 'projects', '-home-dev-gone'));
+  });
+
+  it('400s an unknown what, and opens nothing', async () => {
+    const before = opened.length;
+    expect((await post({ runId: runId('-proj-with-space', REAL_SID), what: '/etc' })).status).toBe(400);
+    expect(opened.length).toBe(before);
+  });
+
   it('404s an unknown run and 400s a missing runId', async () => {
     expect((await post({ runId: 'claude-code:nope:nope' })).status).toBe(404);
     expect((await post({ path: projDir })).status).toBe(400);
