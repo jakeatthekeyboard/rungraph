@@ -6,6 +6,7 @@ import { detect, parse } from '../src/adapters/claude-code/index.js';
 import { toolNodeLabel } from '../src/adapters/claude-code/helpers.js';
 import { filePathsFromToolInput, mergeFiles } from '../src/adapters/claude-code/files.js';
 import { isKnownMainLine } from '../src/adapters/claude-code/helpers.js';
+import { phaseTransitionPairs } from '../src/adapters/claude-code/workflow.js';
 import {
   pinFixtureMtimes,
   FIXTURE_ROOT,
@@ -353,6 +354,46 @@ describe('parse: workflow run', () => {
     const root = ir.nodes.find((n) => n.kind === 'workflow');
     expect(root.status).toBe('completed');
     expect(details.get(root.id).returnValue).toContain('patched');
+  });
+});
+
+describe('phaseTransitionPairs', () => {
+  const n = (id, label) => ({ id, label });
+
+  it('fans every previous node into a single next node', () => {
+    const reviews = [n('r3', 'review:Comedian C'), n('r1', 'review:Comedian A'), n('r2', 'review:Comedian B')];
+    expect(phaseTransitionPairs(reviews, [n('w', 'announce-winner')])).toEqual([
+      ['r3', 'w'],
+      ['r1', 'w'],
+      ['r2', 'w'],
+    ]);
+  });
+
+  it('pairs a 1:1 pipeline by entity, not by completion order', () => {
+    // Comedian C finished first, so its reviewer was recorded first.
+    const jokes = [n('c1', 'comedian:Comedian A'), n('c2', 'comedian:Comedian B'), n('c3', 'comedian:Comedian C')];
+    const reviews = [n('r3', 'review:Comedian C'), n('r1', 'review:Comedian A'), n('r2', 'review:Comedian B (retry 1)')];
+    expect(phaseTransitionPairs(jokes, reviews)).toEqual([
+      ['c1', 'r1'],
+      ['c2', 'r2'],
+      ['c3', 'r3'],
+    ]);
+  });
+
+  it('pairs unmatched labels positionally so no node is dropped', () => {
+    const prev = [n('a', 'x:one'), n('b', 'no-colon'), n('c', null)];
+    const next = [n('d', 'y:zzz'), n('e', 'y:one'), n('f', 'y:qqq')];
+    expect(phaseTransitionPairs(prev, next)).toEqual([
+      ['a', 'e'],
+      ['b', 'd'],
+      ['c', 'f'],
+    ]);
+  });
+
+  it('falls back to every-to-every on unequal counts', () => {
+    const prev = [n('a', 'x:1'), n('b', 'x:2')];
+    const next = [n('c', 'y:1'), n('d', 'y:2'), n('e', 'y:3')];
+    expect(phaseTransitionPairs(prev, next)).toHaveLength(6);
   });
 });
 

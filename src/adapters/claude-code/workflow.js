@@ -221,20 +221,21 @@ export async function parseWorkflowRun(ref, opts = {}) {
     byKey.set(att.key, id);
     att.nodeId = id;
     att.phaseIndex = prog?.phaseIndex ?? null;
+    att.rawLabel = prog?.label ?? null;
   }
 
-  // ---- edges: root → phase-1 fan; single transition edge between phases --
+  // ---- edges: root → phase-1 fan; transition edges between phases -------
   const finalAttempts = [...byKey.values()];
   const byPhase = new Map();
   for (const att of attempts) {
     if (!finalAttempts.includes(att.nodeId)) continue;
     const idx = att.phaseIndex ?? 0;
     if (!byPhase.has(idx)) byPhase.set(idx, []);
-    byPhase.get(idx).push(att.nodeId);
+    byPhase.get(idx).push({ id: att.nodeId, label: att.rawLabel });
   }
   const phaseOrder = [...byPhase.keys()].sort((a, b) => a - b);
   const firstPhase = phaseOrder[0];
-  for (const nodeId of byPhase.get(firstPhase) ?? []) {
+  for (const { id: nodeId } of byPhase.get(firstPhase) ?? []) {
     const node = g.nodes.find((n) => n.id === nodeId);
     g.edges.push({
       id: `e:spawn:${rootId}→${nodeId}`,
@@ -245,16 +246,17 @@ export async function parseWorkflowRun(ref, opts = {}) {
     });
   }
   for (let i = 1; i < phaseOrder.length; i++) {
-    const from = byPhase.get(phaseOrder[i - 1])[0];
-    const to = byPhase.get(phaseOrder[i])[0];
     const title = phases.get(phaseOrder[i]);
-    g.edges.push({
-      id: `e:sequence:${from}→${to}`,
-      kind: 'sequence',
-      from,
-      to,
-      ...(title ? { reason: `phase: ${title}` } : {}),
-    });
+    const pairs = phaseTransitionPairs(byPhase.get(phaseOrder[i - 1]), byPhase.get(phaseOrder[i]));
+    for (const [from, to] of pairs) {
+      g.edges.push({
+        id: `e:sequence:${from}→${to}`,
+        kind: 'sequence',
+        from,
+        to,
+        ...(title ? { reason: `phase: ${title}` } : {}),
+      });
+    }
   }
 
   g.meta.unrecognizedLineCount = unrecognized;
@@ -268,6 +270,47 @@ export async function parseWorkflowRun(ref, opts = {}) {
     agents: attempts.length,
   };
   return { ir: g, details };
+}
+
+/**
+ * Which nodes of one phase feed which nodes of the next. Agents within a
+ * phase are recorded in completion order, not declaration order, so pairing
+ * "first with first" wires unrelated agents together by accident of timing.
+ *
+ * - next phase has one node (fan-in): every previous node feeds it.
+ * - equal counts (1:1 pipeline): match on the entity half of the
+ *   `role:entity` label convention (`comedian:Comedian A` →
+ *   `review:Comedian A`); whatever doesn't match pairs up positionally, so
+ *   no node is dropped.
+ * - anything else: every-to-every — busier, but never a wrong 1:1 guess.
+ *
+ * @param {{id: string, label: string|null}[]} prev
+ * @param {{id: string, label: string|null}[]} next
+ * @returns {[string, string][]} [from, to] node-id pairs
+ */
+export function phaseTransitionPairs(prev, next) {
+  if (next.length === 1) return prev.map((p) => [p.id, next[0].id]);
+  if (prev.length === next.length) {
+    const entity = (label) => {
+      if (typeof label !== 'string') return null;
+      const at = label.indexOf(':');
+      if (at < 0) return null;
+      const e = label.slice(at + 1).replace(/\s*\(retry \d+\)\s*$/, '').trim();
+      return e || null;
+    };
+    const pairs = [];
+    const unmatchedNext = [...next];
+    const unmatchedPrev = [];
+    for (const p of prev) {
+      const e = entity(p.label);
+      const j = e == null ? -1 : unmatchedNext.findIndex((n) => entity(n.label) === e);
+      if (j < 0) unmatchedPrev.push(p);
+      else pairs.push([p.id, unmatchedNext.splice(j, 1)[0].id]);
+    }
+    unmatchedPrev.forEach((p, k) => pairs.push([p.id, unmatchedNext[k].id]));
+    return pairs;
+  }
+  return prev.flatMap((p) => next.map((n) => [p.id, n.id]));
 }
 
 /**
