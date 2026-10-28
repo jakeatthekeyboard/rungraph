@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { join, normalize, dirname, extname, basename } from 'node:path';
+import { join, normalize, dirname, extname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scan, toIndexEntry, ADAPTERS } from './scanner.js';
 import { watchRun, diffGraphs } from './watcher.js';
@@ -644,13 +644,37 @@ async function apiDetail(res, state, nodeId, runId, full = false) {
     if (!details) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
     const detail = details.get(nodeId);
     if (!detail) return sendJson(res, 404, { error: `no detail for node "${nodeId}"` });
-    return sendJson(res, 200, detail);
+    return sendJson(res, 200, await withSource(state, runId, nodeId, detail));
   }
   const hit = await loadGraph(state, runId);
   if (!hit) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
   const detail = hit.details.get(nodeId);
   if (!detail) return sendJson(res, 404, { error: `no detail for node "${nodeId}"` });
-  sendJson(res, 200, detail);
+  sendJson(res, 200, await withSource(state, runId, nodeId, detail));
+}
+
+/**
+ * An agent node's detail, plus the transcript file it was read from: its
+ * name, and its path relative to the provider's project folder (for Claude
+ * Code, ~/.claude/projects/<PROJECT>/). Added to the response, not stored, so
+ * the parse cache and bundles stay as they are. Other nodes pass through.
+ */
+async function withSource(state, runId, nodeId, detail) {
+  if (state.bundles || detail?.kind !== 'agent') return detail;
+  try {
+    const ref = await resolveRun(state, runId);
+    if (!ref) return detail;
+    const { ir } = await parseCached(state, ref);
+    const node = ir.nodes.find((n) => n.id === nodeId);
+    const adapter = ADAPTERS.find((a) => a.name === ref.adapter);
+    const file = (node && (await adapter?.sourceFile?.(ref, node))) ?? ref.sessionFile ?? ref.dbPath ?? null;
+    if (typeof file !== 'string') return detail;
+    const root = ref.projectDir ?? dirname(file);
+    const rel = relative(root, file);
+    return { ...detail, source: { name: basename(file), path: rel.startsWith('..') ? file : rel, root } };
+  } catch {
+    return detail;
+  }
 }
 
 /**

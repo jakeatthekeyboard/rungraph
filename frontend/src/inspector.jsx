@@ -812,6 +812,16 @@ function NodeDetail({
           </>
         )}
         {node.startedAt && (<><dt>started</dt><dd>{fmtTime(node.startedAt)}<CopyValue /></dd></>)}
+        {/* An agent's own transcript file: its name, and its path from the
+            project folder (title: the folder it is relative to). */}
+        {fresh?.source && (
+          <>
+            <dt>file</dt>
+            <dd>{fresh.source.name}<CopyValue /></dd>
+            <dt>path</dt>
+            <dd title={fresh.source.root}>{fresh.source.path}<CopyValue /></dd>
+          </>
+        )}
         {/* Stated in words, not only as a struck label: this is the one place
             the user can find out what "struck through" meant. */}
         {node.reverted && (
