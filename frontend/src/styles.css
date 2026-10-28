@@ -1053,21 +1053,34 @@ button.ghost[data-on="true"] {
   cursor: pointer;
 }
 .text-box .box-tools button:hover { color: var(--ink); background: var(--bg-raised); }
-/* Drag grip on each text box's bottom edge: invisible until hovered. It sits
-   over the box's 14px bottom margin, so it takes no extra room. */
+/* Drag grip on each text box's bottom edge: a short bar centred under the
+   box, always visible, brighter on hover. The hit area spans the full width
+   over the box's bottom margin, so it takes no extra room. */
 .text-box .box-grip {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 8px;
-  height: 8px;
+  bottom: 3px;
+  height: 11px;
   cursor: row-resize;
   touch-action: none;
-  border-radius: 4px;
-  transition: background 120ms ease-out;
 }
-.text-box .box-grip:hover,
-:root[data-resizing="text-box"] .text-box .box-grip:active { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.text-box .box-grip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 36px;
+  height: 3px;
+  margin-left: -18px;
+  border-radius: 2px;
+  background: var(--hairline);
+  transition: background 120ms ease-out, width 120ms ease-out;
+}
+.text-box .box-grip:hover::after,
+:root[data-resizing="text-box"] .text-box .box-grip:active::after {
+  background: var(--accent);
+}
 :root[data-resizing="text-box"] { cursor: row-resize; user-select: none; -webkit-user-select: none; }
 /* Full screen: the box fills the window over everything else. */
 .text-box-full {
@@ -1079,6 +1092,7 @@ button.ghost[data-on="true"] {
   backdrop-filter: blur(2px);
 }
 .text-box-full .text-box { height: 100%; display: flex; flex-direction: column; }
+.text-box-full .text-box .md { flex: 1; min-height: 0; max-height: none; margin: 0; padding: 14px 18px; }
 .text-box-full pre {
   flex: 1;
   min-height: 0;
@@ -1098,6 +1112,58 @@ button.ghost[data-on="true"] {
   color: var(--ink);
 }
 .text-box-full .box-tools { opacity: 1; margin: 0 0 6px; }
+/* "style" mode: a Markdown box keeps the text box's frame, cap and scroll,
+   with the prose set in the UI face and code kept monospace. Scoped to the
+   pane and to the full-screen overlay (which is portalled outside it). */
+:is(.inspector, .text-box-full) .md {
+  background: var(--bg);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 7px;
+  padding: 9px 12px;
+  font-family: var(--ui);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 3px 0 14px;
+}
+:is(.inspector, .text-box-full) .md > :first-child { margin-top: 0; }
+:is(.inspector, .text-box-full) .md > :last-child { margin-bottom: 0; }
+:is(.inspector, .text-box-full) .md p { margin: 0 0 8px; }
+:is(.inspector, .text-box-full) .md .md-h { margin: 12px 0 6px; font-weight: 650; line-height: 1.3; color: var(--ink); }
+:is(.inspector, .text-box-full) .md .md-h1 { font-size: var(--fs-xl); }
+:is(.inspector, .text-box-full) .md .md-h2 { font-size: var(--fs-lg); }
+:is(.inspector, .text-box-full) .md .md-h3, :is(.inspector, .text-box-full) .md .md-h4, :is(.inspector, .text-box-full) .md .md-h5, :is(.inspector, .text-box-full) .md .md-h6 { font-size: var(--fs-base); }
+:is(.inspector, .text-box-full) .md ul, :is(.inspector, .text-box-full) .md ol { margin: 0 0 8px; padding-left: 20px; }
+:is(.inspector, .text-box-full) .md li { margin: 2px 0; }
+:is(.inspector, .text-box-full) .md li > ul, :is(.inspector, .text-box-full) .md li > ol { margin: 2px 0 0; }
+:is(.inspector, .text-box-full) .md code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg-raised);
+}
+:is(.inspector, .text-box-full) .md pre.md-code {
+  margin: 6px 0 10px;
+  max-height: none;
+  background: var(--bg-raised);
+  border-color: transparent;
+}
+:is(.inspector, .text-box-full) .md blockquote {
+  margin: 0 0 8px;
+  padding: 2px 0 2px 10px;
+  border-left: 3px solid var(--hairline);
+  color: var(--ink-dim);
+}
+:is(.inspector, .text-box-full) .md hr { border: none; border-top: 1px solid var(--hairline-soft); margin: 10px 0; }
+:is(.inspector, .text-box-full) .md a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+:is(.inspector, .text-box-full) .md .md-table { overflow-x: auto; margin: 0 0 8px; }
+:is(.inspector, .text-box-full) .md table { border-collapse: collapse; font-size: var(--fs-md); }
+:is(.inspector, .text-box-full) .md th, :is(.inspector, .text-box-full) .md td { border: 1px solid var(--hairline-soft); padding: 3px 7px; text-align: left; vertical-align: top; }
+:is(.inspector, .text-box-full) .md th { background: var(--bg-raised); font-weight: 600; }
 .inspector pre.error-text { color: var(--clay); border-color: var(--clay-dim); }
 .tool-call .head .ok { color: var(--sage); }
 .inspector .loading { color: var(--ink-faint); font-family: var(--mono); padding: 14px 0; }
