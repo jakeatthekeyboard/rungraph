@@ -785,13 +785,25 @@ button.ghost[data-on="true"] {
   transition: stroke 120ms ease-out;
 }
 .node:hover rect.body { stroke: var(--ink-faint); }
-.node[data-selected="true"] rect.body { stroke: var(--accent); stroke-width: 1.4; }
+.node[data-kind="turn"] rect.body { --fill: var(--node-turn); }
+.node[data-kind="agent"] rect.body { --fill: var(--node-agent); }
+.node[data-kind="tool"] rect.body { --fill: var(--node-tool); }
+.node[data-kind="workflow"] rect.body { --fill: var(--node-workflow); }
+.node[data-kind="human"] rect.body { --fill: var(--node-human); }
+.node rect.body { fill: var(--fill, var(--card)); }
 
-.node[data-kind="turn"] rect.body { fill: var(--node-turn); }
-.node[data-kind="agent"] rect.body { fill: var(--node-agent); }
-.node[data-kind="tool"] rect.body { fill: var(--node-tool); }
-.node[data-kind="workflow"] rect.body { fill: var(--node-workflow); }
-.node[data-kind="human"] rect.body { fill: var(--node-human); }
+/* The selected node has to be findable at any zoom: a heavier accent border,
+   a glow around it, and an accent-tinted card. Its edges light up too (see
+   .edge[data-adjacent]). Distinct from the focus .ring, which is a separate
+   outline and never changes the card itself. */
+.node[data-selected="true"] rect.body {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  fill: color-mix(in srgb, var(--accent) 22%, var(--fill, var(--card)));
+  filter:
+    drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 75%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 35%, transparent));
+}
 
 .node rect.status {
   transition: fill 200ms ease-out;
@@ -857,6 +869,8 @@ button.ghost[data-on="true"] {
 .edge[data-kind="return"] path { stroke: var(--sage-dim); stroke-dasharray: 3 4; }
 .edge[data-kind="sequence"] path { stroke: var(--hairline); }
 .edge.has-reason path { stroke: var(--amber-dim); }
+/* Edges into and out of the selected node. */
+.edge[data-adjacent="true"] path:first-child { stroke: var(--accent); stroke-width: 2.5px; }
 .edge text {
   font-family: var(--mono);
   font-size: 9px;

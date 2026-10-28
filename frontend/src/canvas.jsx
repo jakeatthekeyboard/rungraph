@@ -622,6 +622,8 @@ export function Canvas({
                   order={edgeNumbers.get(e.id)}
                   present={present}
                   selected={selection?.type === 'edge' && selection.id === e.id}
+                  // lit when it runs into or out of the selected node
+                  adjacent={selection?.type === 'node' && (e.from === selection.id || e.to === selection.id)}
                   // an edge stays bright only if it connects two focused nodes —
                   // and a future edge is a ghost, not a dimmed edge: one opacity
                   // channel at a time (the same rule nodeMarks applies).
@@ -980,7 +982,7 @@ export function fmtDuration(ms) {
   return `${ms}ms`;
 }
 
-const EdgeView = memo(function EdgeView({ edge, pts, selected, dim, order, present = true }) {
+const EdgeView = memo(function EdgeView({ edge, pts, selected, adjacent, dim, order, present = true }) {
   const d = edgePath(pts);
   const mid = pts[Math.floor(pts.length / 2)];
   const half = order ? halfway(pts) : null;
@@ -993,6 +995,7 @@ const EdgeView = memo(function EdgeView({ edge, pts, selected, dim, order, prese
       data-kind={edge.kind}
       data-dim={String(Boolean(dim))}
       data-future={String(future)}
+      data-adjacent={String(Boolean(adjacent) && !future)}
       data-edge-id={edge.id}
     >
       <path d={d} marker-end={edge.kind !== 'sequence' ? 'url(#arrow)' : undefined} />
