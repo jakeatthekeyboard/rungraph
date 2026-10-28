@@ -50,12 +50,15 @@ export async function postResume(runId, fork) {
   return r.json();
 }
 
-/** Open the run's project folder in Finder / File Explorer. */
-export async function postReveal(runId) {
+/**
+ * Open one of the run's folders in Finder / File Explorer: 'project' (where
+ * the run worked) or 'transcripts' (where its session files live).
+ */
+export async function postReveal(runId, what = 'project') {
   const r = await fetch('/api/reveal', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ runId }),
+    body: JSON.stringify({ runId, what }),
   });
   if (!r.ok) throw new Error(`reveal: ${r.status}`);
   return r.json();

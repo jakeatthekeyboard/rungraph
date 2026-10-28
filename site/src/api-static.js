@@ -72,9 +72,9 @@ export async function postResume(runId, fork) {
 }
 
 /**
- * Unreachable in the embed: the folder button is not rendered there (there is
+ * Unreachable in the embed: the folder buttons are not rendered there (there is
  * no local folder behind a baked run). Present so the contract matches api.js.
  */
-export async function postReveal(runId) {
+export async function postReveal(runId, what) {
   return { opened: false };
 }

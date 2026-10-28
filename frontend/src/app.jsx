@@ -1556,17 +1556,27 @@ function Picker({ index, runId, onSelect, onResume }) {
                 {g.runs.length === g.total ? g.total : `${g.runs.length} of ${g.total}`}
               </span>
             </button>
-            {/* A sibling of the toggle, not inside it: a button in a button is
-                invalid HTML. Only real project folders get one. */}
+            {/* Siblings of the toggle, not inside it: a button in a button is
+                invalid HTML. Only real project folders get them. */}
             {g.kind === 'project' && g.runs[0] && !window.RUNGRAPH_EMBED && (
-              <button
-                class="reveal-folder"
-                onClick={() => postReveal(g.runs[0].runId).catch(() => {})}
-                title={`open ${g.label} in ${FILE_MANAGER}`}
-                aria-label={`open ${g.label} in ${FILE_MANAGER}`}
-              >
-                <FolderIcon />
-              </button>
+              <div class="reveal-actions">
+                <button
+                  class="reveal-folder"
+                  onClick={() => postReveal(g.runs[0].runId, 'project').catch(() => {})}
+                  title={`open ${g.label} in ${FILE_MANAGER}`}
+                  aria-label={`open ${g.label} in ${FILE_MANAGER}`}
+                >
+                  <FolderIcon />
+                </button>
+                <button
+                  class="reveal-folder"
+                  onClick={() => postReveal(g.runs[0].runId, 'transcripts').catch(() => {})}
+                  title={`open the session files folder for ${g.label} in ${FILE_MANAGER}`}
+                  aria-label={`open the session files folder for ${g.label} in ${FILE_MANAGER}`}
+                >
+                  <TranscriptsIcon />
+                </button>
+              </div>
             )}
             {open && (
               <div class="project-runs" id={groupId}>
@@ -1697,6 +1707,22 @@ function FolderIcon() {
         stroke-width="1.1"
         stroke-linejoin="round"
       />
+    </svg>
+  );
+}
+
+// A folder with lines on it: the folder of session files.
+function TranscriptsIcon() {
+  return (
+    <svg width="13" height="11" viewBox="0 0 13 11" aria-hidden="true">
+      <path
+        d="M1 2.25C1 1.56 1.56 1 2.25 1h2.6l1.3 1.4h4.6c.69 0 1.25.56 1.25 1.25v5.1c0 .69-.56 1.25-1.25 1.25h-8.5C1.56 10 1 9.44 1 8.75z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.1"
+        stroke-linejoin="round"
+      />
+      <path d="M3.6 5.3h5.8M3.6 7.4h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
     </svg>
   );
 }

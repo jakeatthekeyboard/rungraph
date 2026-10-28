@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { join, normalize, dirname, extname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scan, toIndexEntry, ADAPTERS } from './scanner.js';
@@ -427,10 +427,13 @@ async function apiResume(req, res, state) {
 }
 
 /**
- * Open a run's project folder in the OS file manager — the picker's folder
- * button. Behind the same Origin and Host guards as /api/resume. The request
- * names a run, never a path: the directory is the one the scan already holds
- * for that run, and only a real, existing, non-loose project is opened.
+ * Open one of a run's folders in the OS file manager — the picker's folder
+ * buttons. `what: 'project'` (the default) is the project the run worked in;
+ * `what: 'transcripts'` is the folder holding its transcript (the session
+ * .jsonl, or the store database for the SQLite adapters). Behind the same
+ * Origin and Host guards as /api/resume. The request names a run, never a
+ * path: the directory is one the scan already holds for that run, and only a
+ * directory that exists (and, for a project, is not loose) is opened.
  */
 async function apiReveal(req, res, state) {
   const origin = req.headers.origin;
@@ -447,13 +450,25 @@ async function apiReveal(req, res, state) {
     return sendJson(res, 400, { error: String(err.message ?? err) });
   }
   const runId = typeof body?.runId === 'string' ? body.runId : null;
-  if (!runId) return sendJson(res, 400, { error: 'expected { runId: string }' });
+  const what = body?.what ?? 'project';
+  if (!runId || (what !== 'project' && what !== 'transcripts')) {
+    return sendJson(res, 400, { error: "expected { runId: string, what?: 'project' | 'transcripts' }" });
+  }
   const ref = await resolveRun(state, runId);
   if (!ref) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
-  if (toIndexEntry(ref).loose) {
-    return sendJson(res, 400, { error: `run "${runId}" has no project folder on this machine` });
+  let dir;
+  if (what === 'project') {
+    if (toIndexEntry(ref).loose) {
+      return sendJson(res, 400, { error: `run "${runId}" has no project folder on this machine` });
+    }
+    dir = ref.project;
+  } else {
+    const file = ref.sessionFile ?? ref.dbPath;
+    dir = typeof file === 'string' ? dirname(file) : null;
+    const isDir = dir ? await stat(dir).then((st) => st.isDirectory(), () => false) : false;
+    if (!isDir) return sendJson(res, 400, { error: `run "${runId}" has no transcript folder on this machine` });
   }
-  const opened = await state.openFolder(ref.project);
+  const opened = await state.openFolder(dir);
   sendJson(res, 200, { opened });
 }
 
