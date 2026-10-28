@@ -266,10 +266,10 @@ function Clipped({ text, class: cls }) {
 }
 
 /**
- * A text box with three icons on its top-right corner: copy, expand (the
+ * A text box with three icons just above its top-right corner: copy, expand (the
  * text fills the window; Esc or ✕ closes it) and break out (the text opens
- * in a new browser window). The icons sit on a wrapper, not inside the
- * <pre>, so they stay put while a long box scrolls. All three use the text
+ * in a new browser window). The icons sit in a row above the <pre>, never
+ * over its text, and stay put while a long box scrolls. All three use the text
  * exactly as stored — whitespace and line breaks kept.
  */
 function TextBox({ text, class: cls }) {
@@ -341,8 +341,8 @@ function TextBox({ text, class: cls }) {
   };
   return (
     <div class="text-box">
-      <pre class={cls} ref={preRef}>{text}</pre>
       {tools}
+      <pre class={cls} ref={preRef}>{text}</pre>
       <div
         class="box-grip"
         role="separator"
@@ -360,8 +360,8 @@ function TextBox({ text, class: cls }) {
         createPortal(
           <div class="text-box-full" role="dialog" aria-modal="true" aria-label="text, full screen" onClick={() => setExpanded(false)}>
             <div class="text-box" onClick={(e) => e.stopPropagation()}>
-              <pre class={cls}>{text}</pre>
               {tools}
+              <pre class={cls}>{text}</pre>
             </div>
           </div>,
           document.body,
