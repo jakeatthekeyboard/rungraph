@@ -352,6 +352,30 @@ button.ghost[data-on="true"] {
   transition: background 100ms ease-out;
 }
 .picker .project-toggle:hover { background: var(--bg-raised); }
+/* The folder button sits just right of the session count, overlaid on the
+   toggle row (it cannot live inside the toggle button). The toggle keeps the
+   room for it so the count never runs underneath. */
+.picker .project-group { position: relative; }
+.picker .project-group[data-kind="project"] > .project-toggle { padding-right: 32px; }
+.picker .reveal-folder {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  width: 24px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 100ms ease-out, background 100ms ease-out;
+}
+.picker .reveal-folder:hover,
+.picker .reveal-folder:focus-visible { color: var(--ink); background: var(--bg-raised); }
 .picker .project-toggle:hover .microlabel { color: var(--ink-dim); }
 .picker .project-toggle .microlabel {
   flex: 1;

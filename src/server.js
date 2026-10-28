@@ -9,6 +9,7 @@ import { matchNodes } from './find.js';
 import { buildBundle, loadBundleFile, bundleRunEntry, defaultBundleName, defaultSharedBy } from './bundle.js';
 import { liveServers } from './registry.js';
 import { launchTerminal } from './launch.js';
+import { openFolder } from './open.js';
 
 const DIST_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const HOST = '127.0.0.1'; // privacy: never bind anything else
@@ -43,7 +44,8 @@ const MIME = {
  * process leaves no trace, and the file itself is the library.
  *
  * @param {{ preferredPort?: number, project?: string, bundles?: string[],
- *           launch?: (argv: string[], cwd: string|null) => Promise<boolean> }} opts
+ *           launch?: (argv: string[], cwd: string|null) => Promise<boolean>,
+ *           openFolder?: (dir: string) => Promise<boolean> }} opts
  * @returns {Promise<{ url: string, port: number, close: () => Promise<void> }>}
  */
 export async function startServer(opts = {}) {
@@ -51,6 +53,8 @@ export async function startServer(opts = {}) {
     project: opts.project,
     // Injectable for tests; the real one opens a macOS terminal window.
     launch: opts.launch ?? launchTerminal,
+    // Injectable for tests; the real one opens Finder / File Explorer.
+    openFolder: opts.openFolder ?? openFolder,
     // runId → { key, ir, details } — parse cache, invalidated by mtime key.
     parseCache: new Map(),
     // runId → { watcher, clients: Set<res>, lastIR }
@@ -159,6 +163,10 @@ async function handle(req, res, state) {
   if (path === '/api/resume') {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'POST only' });
     return apiResume(req, res, state);
+  }
+  if (path === '/api/reveal') {
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'POST only' });
+    return apiReveal(req, res, state);
   }
   if (path === '/api/index') return apiIndex(res, state);
   if (path === '/api/view') return apiView(res, state);
@@ -416,6 +424,37 @@ async function apiResume(req, res, state) {
   const copyCommand = fork ? info.forkCopyCommand : info.copyCommand;
   const launched = await state.launch(argv, info.cwd);
   sendJson(res, 200, launched ? { launched: true } : { launched: false, copyCommand });
+}
+
+/**
+ * Open a run's project folder in the OS file manager — the picker's folder
+ * button. Behind the same Origin and Host guards as /api/resume. The request
+ * names a run, never a path: the directory is the one the scan already holds
+ * for that run, and only a real, existing, non-loose project is opened.
+ */
+async function apiReveal(req, res, state) {
+  const origin = req.headers.origin;
+  if (origin && !isLocalOrigin(origin, state.port)) {
+    return sendJson(res, 403, { error: 'cross-origin reveal rejected' });
+  }
+  if (state.bundles) {
+    return sendJson(res, 400, { error: 'these runs came from a bundle on another machine — there is no folder here to open' });
+  }
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch (err) {
+    return sendJson(res, 400, { error: String(err.message ?? err) });
+  }
+  const runId = typeof body?.runId === 'string' ? body.runId : null;
+  if (!runId) return sendJson(res, 400, { error: 'expected { runId: string }' });
+  const ref = await resolveRun(state, runId);
+  if (!ref) return sendJson(res, 404, { error: `no run found with id "${runId}"` });
+  if (toIndexEntry(ref).loose) {
+    return sendJson(res, 400, { error: `run "${runId}" has no project folder on this machine` });
+  }
+  const opened = await state.openFolder(ref.project);
+  sendJson(res, 200, { opened });
 }
 
 function isLocalOrigin(origin, port) {
