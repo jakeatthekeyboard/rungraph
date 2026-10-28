@@ -363,9 +363,27 @@ function TextBox({ text, class: cls }) {
     e.currentTarget.setPointerCapture?.(e.pointerId);
     document.documentElement.dataset.resizing = 'text-box';
   };
+  // The button by the grip: grow the box to its whole text in one click (the
+  // same as dragging the edge to the bottom of the text), click again to put
+  // the cap back. Shown only when the text overflows, or while grown.
+  const [fit, setFit] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  useEffect(() => {
+    const el = preRef.current;
+    if (el) setOverflows(el.scrollHeight > el.clientHeight + 1);
+  });
+  const toggleFit = (e) => {
+    e.stopPropagation();
+    const el = preRef.current;
+    if (!el) return;
+    if (fit) el.style.removeProperty('max-height');
+    else el.style.maxHeight = 'none';
+    setFit(!fit);
+  };
   const onGripMove = (e) => {
     const d = drag.current;
     if (!d || !preRef.current) return;
+    if (fit) setFit(false);
     preRef.current.style.maxHeight = `${Math.max(60, Math.round(d.startH + (e.clientY - d.startY)))}px`;
   };
   const onGripEnd = () => {
@@ -401,8 +419,22 @@ function TextBox({ text, class: cls }) {
         onPointerUp={onGripEnd}
         onPointerCancel={onGripEnd}
         onLostPointerCapture={onGripEnd}
-        onDblClick={() => preRef.current?.style.removeProperty('max-height')}
+        onDblClick={() => {
+          preRef.current?.style.removeProperty('max-height');
+          setFit(false);
+        }}
       />
+      {(overflows || fit) && (
+        <button
+          type="button"
+          class="box-fit"
+          onClick={toggleFit}
+          title={fit ? 'shrink back' : 'show all of the text'}
+          aria-label={fit ? 'shrink this text box back' : 'grow this text box to show all of the text'}
+        >
+          {fit ? '⤒ less' : '⤓ all'}
+        </button>
+      )}
       {expanded &&
         createPortal(
           <div class="text-box-full" role="dialog" aria-modal="true" aria-label="text, full screen" onClick={() => setExpanded(false)}>
