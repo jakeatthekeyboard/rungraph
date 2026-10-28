@@ -13,3 +13,4 @@ export {
   ADAPTER_NAME as name,
 } from './detect.js';
 export { parse } from './parse.js';
+export { unrecognizedReport } from './diagnose.js';

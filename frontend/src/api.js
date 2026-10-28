@@ -65,6 +65,13 @@ export async function postReveal(runId, what = 'project', nodeId = undefined) {
   return r.json();
 }
 
+/** The "records unrecognized" detail for a run: { total, files, groups, text }. */
+export async function fetchUnrecognized(runId) {
+  const r = await fetch(`/api/unrecognized/${encodeURIComponent(runId)}`);
+  if (!r.ok) throw new Error(`unrecognized: ${r.status}`);
+  return r.json();
+}
+
 /**
  * Subscribe to live IR deltas. onMessage receives {type:'snapshot', graph},
  * {type:'delta', …} or {type:'focus', …} (an agent's answer, broadcast by
