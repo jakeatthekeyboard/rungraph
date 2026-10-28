@@ -1160,7 +1160,7 @@ button.ghost[data-on="true"] {
   backdrop-filter: blur(2px);
 }
 .text-box-full .text-box { height: 100%; display: flex; flex-direction: column; }
-.text-box-full .text-box .md { flex: 1; min-height: 0; max-height: none; margin: 0; padding: 14px 18px; }
+.text-box-full .text-box :is(.md, .jv-box) { flex: 1; min-height: 0; max-height: none; margin: 0; padding: 14px 18px; }
 .text-box-full pre {
   flex: 1;
   min-height: 0;
@@ -1180,10 +1180,12 @@ button.ghost[data-on="true"] {
   color: var(--ink);
 }
 .text-box-full .box-tools { opacity: 1; margin: 0 0 6px; }
+/* .jv-box is a style-mode JSON box (json-view.jsx): same frame, monospace. */
+:is(.inspector, .text-box-full) .jv-box.jv-box { font-family: var(--mono); font-size: var(--fs-md); }
 /* "style" mode: a Markdown box keeps the text box's frame, cap and scroll,
    with the prose set in the UI face and code kept monospace. Scoped to the
    pane and to the full-screen overlay (which is portalled outside it). */
-:is(.inspector, .text-box-full) .md {
+:is(.inspector, .text-box-full) :is(.md, .jv-box) {
   background: var(--bg);
   border: 1px solid var(--hairline-soft);
   border-radius: 7px;
