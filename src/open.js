@@ -24,3 +24,29 @@ export function openInBrowser(url) {
     }
   });
 }
+
+/**
+ * Open a directory in the OS file manager: Finder on macOS, File Explorer on
+ * Windows, the desktop's default elsewhere. The path goes in as an argv
+ * entry, never through a shell. Resolves false when nothing could start.
+ */
+export function openFolder(dir) {
+  const [cmd, args] =
+    process.platform === 'darwin'
+      ? ['open', [dir]]
+      : process.platform === 'win32'
+        ? ['explorer.exe', [dir]]
+        : ['xdg-open', [dir]];
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(cmd, args, { stdio: 'ignore', detached: true });
+      child.on('error', () => resolve(false));
+      child.on('spawn', () => {
+        child.unref();
+        resolve(true);
+      });
+    } catch {
+      resolve(false);
+    }
+  });
+}

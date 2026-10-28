@@ -50,6 +50,17 @@ export async function postResume(runId, fork) {
   return r.json();
 }
 
+/** Open the run's project folder in Finder / File Explorer. */
+export async function postReveal(runId) {
+  const r = await fetch('/api/reveal', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ runId }),
+  });
+  if (!r.ok) throw new Error(`reveal: ${r.status}`);
+  return r.json();
+}
+
 /**
  * Subscribe to live IR deltas. onMessage receives {type:'snapshot', graph},
  * {type:'delta', …} or {type:'focus', …} (an agent's answer, broadcast by

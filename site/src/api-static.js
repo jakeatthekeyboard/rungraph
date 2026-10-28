@@ -70,3 +70,11 @@ export function watchGraph(runId, onMessage, onStatus) {
 export async function postResume(runId, fork) {
   return { launched: false, copyCommand: '' };
 }
+
+/**
+ * Unreachable in the embed: the folder button is not rendered there (there is
+ * no local folder behind a baked run). Present so the contract matches api.js.
+ */
+export async function postReveal(runId) {
+  return { opened: false };
+}

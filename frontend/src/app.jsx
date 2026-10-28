@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { fetchIndex, fetchGraph, watchGraph, applyDelta } from './api.js';
+import { fetchIndex, fetchGraph, watchGraph, applyDelta, postReveal } from './api.js';
 import { Canvas } from './canvas.jsx';
 import { Inspector } from './inspector.jsx';
 import { Strip, SIGNAL_GLYPHS } from './strip.jsx';
@@ -1556,6 +1556,18 @@ function Picker({ index, runId, onSelect, onResume }) {
                 {g.runs.length === g.total ? g.total : `${g.runs.length} of ${g.total}`}
               </span>
             </button>
+            {/* A sibling of the toggle, not inside it: a button in a button is
+                invalid HTML. Only real project folders get one. */}
+            {g.kind === 'project' && g.runs[0] && !window.RUNGRAPH_EMBED && (
+              <button
+                class="reveal-folder"
+                onClick={() => postReveal(g.runs[0].runId).catch(() => {})}
+                title={`open ${g.label} in ${FILE_MANAGER}`}
+                aria-label={`open ${g.label} in ${FILE_MANAGER}`}
+              >
+                <FolderIcon />
+              </button>
+            )}
             {open && (
               <div class="project-runs" id={groupId}>
                 {g.runs.map((r) => (
@@ -1667,6 +1679,28 @@ function timeAgo(iso) {
 
 // Sidebar glyph: a window outline split by a divider, the pane's side filled
 // while it is open. Replaces ▤/▥, which rendered as a solid "stop" square.
+// Named for the tooltip only; the server picks the real opener.
+const FILE_MANAGER =
+  typeof navigator !== 'undefined' && /Win/i.test(navigator.platform ?? '')
+    ? 'File Explorer'
+    : typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform ?? '')
+      ? 'Finder'
+      : 'the file manager';
+
+function FolderIcon() {
+  return (
+    <svg width="13" height="11" viewBox="0 0 13 11" aria-hidden="true">
+      <path
+        d="M1 2.25C1 1.56 1.56 1 2.25 1h2.6l1.3 1.4h4.6c.69 0 1.25.56 1.25 1.25v5.1c0 .69-.56 1.25-1.25 1.25h-8.5C1.56 10 1 9.44 1 8.75z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.1"
+        stroke-linejoin="round"
+      />
+    </svg>
+  );
+}
+
 function PanelIcon({ side, open }) {
   const x = side === 'left' ? 2 : 10;
   return (
